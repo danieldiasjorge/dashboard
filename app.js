@@ -31,9 +31,13 @@
   });
 
   let state = loadState();
-  let currentView = 'calendar';
+  let currentView = localStorage.getItem('castlesbay-view') || 'calendar';
   let categoryFilter = 'all';
+  let searchQuery = '';
   let calRef = new Date();
+  let animateNext = true;   // anima a próxima render (ao navegar)
+  let calDir = null;        // 'next' | 'prev' — direção do deslize do mês
+  let dragPostId = null;    // post a ser arrastado no calendário
 
   // ------------------------------------------------------------- utils
   function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
@@ -79,10 +83,20 @@
     return `${d} ${MESES[m - 1].slice(0, 3)} ${y}`;
   }
 
-  function toast(msg) {
+  function toast(msg, opts = {}) {
     const el = document.getElementById('toast');
-    el.textContent = msg; el.hidden = false;
-    clearTimeout(toast._t); toast._t = setTimeout(() => { el.hidden = true; }, 2400);
+    if (toast._expire) { toast._expire(); toast._expire = null; }
+    el.innerHTML = '';
+    const span = document.createElement('span'); span.textContent = msg; el.appendChild(span);
+    if (opts.actionLabel && opts.onAction) {
+      const b = document.createElement('button'); b.className = 'toast-action'; b.textContent = opts.actionLabel;
+      b.addEventListener('click', () => { el.hidden = true; clearTimeout(toast._t); toast._expire = null; opts.onAction(); });
+      el.appendChild(b);
+    }
+    el.hidden = false;
+    toast._expire = opts.onExpire || null;
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => { el.hidden = true; if (toast._expire) { toast._expire(); toast._expire = null; } }, opts.duration || 2600);
   }
 
   function hexA(hex, a) {
@@ -93,6 +107,12 @@
   }
 
   const passesFilter = item => categoryFilter === 'all' || item.categoryId === categoryFilter;
+  function matchesSearch(item) {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return (item.title || '').toLowerCase().includes(q) || (item.notes || '').toLowerCase().includes(q);
+  }
+  const visible = item => passesFilter(item) && matchesSearch(item);
 
   // ------------------------------------------------------------- IMAGES
   const IMAGES = {
@@ -148,6 +168,7 @@
   const ACTIONS = { calendar: 'Novo post', ideas: 'Nova ideia', tasks: 'Nova tarefa' };
 
   function render() {
+    const animate = animateNext;
     renderCategories();
     renderCategoryFilter();
     document.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.view === currentView));
@@ -156,9 +177,15 @@
     document.getElementById('primary-action').textContent = ACTIONS[currentView];
 
     const c = document.getElementById('view-container');
-    if (currentView === 'calendar') renderCalendar(c);
-    else if (currentView === 'ideas') renderIdeas(c);
-    else renderTasks(c);
+    if (currentView === 'calendar') renderCalendar(c, animate);
+    else if (currentView === 'ideas') renderIdeas(c, animate);
+    else renderTasks(c, animate);
+
+    // deslize de entrada da vista (exceto quando o calendário faz o seu próprio deslize de mês)
+    if (animate && !(currentView === 'calendar' && calDir)) {
+      c.classList.remove('view-enter'); void c.offsetWidth; c.classList.add('view-enter');
+    }
+    animateNext = false;
   }
 
   function countForCategory(id) {
@@ -205,8 +232,14 @@
     const startOffset = (first.getDay() + 6) % 7;
     const gridStart = new Date(year, month, 1 - startOffset);
 
+    const monthPosts = state.posts.filter(p => {
+      const [py, pm] = p.date.split('-').map(Number);
+      return py === year && pm === month + 1 && visible(p);
+    });
+    const publishedCount = monthPosts.filter(p => p.status === 'publicado').length;
+
     const byDate = {};
-    state.posts.filter(passesFilter).forEach(p => { (byDate[p.date] ||= []).push(p); });
+    state.posts.filter(visible).forEach(p => { (byDate[p.date] ||= []).push(p); });
 
     let cells = '';
     for (let i = 0; i < 42; i++) {
@@ -218,11 +251,11 @@
 
       const pills = dayPosts.map(p => {
         const cat = categoryById(p.categoryId);
-        const color = cat ? cat.color : '#626a79';
+        const color = cat ? cat.color : '#8a8377';
         const media = (p.images && p.images.length) ? `<span class="cal-post-media">⧉${p.images.length}</span>` : '';
-        return `<div class="cal-post ${p.status === 'publicado' ? 'published' : ''}"
+        return `<div class="cal-post ${p.status === 'publicado' ? 'published' : ''}" draggable="true"
           style="background:${hexA(color, .15)};color:${color};border-left-color:${color}"
-          data-post="${p.id}" title="${esc(p.title)}">
+          data-post="${p.id}" title="${esc(p.title)} — arrasta para reagendar">
           <span class="cal-post-title">${esc(p.title)}</span>${media}</div>`;
       }).join('');
 
@@ -232,33 +265,46 @@
         <div class="cal-posts">${pills}</div></div>`;
     }
 
+    const summary = monthPosts.length
+      ? `<b>${monthPosts.length}</b> ${monthPosts.length === 1 ? 'post' : 'posts'}
+         <span class="dot-sep">·</span> <b>${publishedCount}</b> ${publishedCount === 1 ? 'publicado' : 'publicados'}
+         <span class="dot-sep">·</span> <b>${monthPosts.length - publishedCount}</b> por publicar`
+      : (searchQuery || categoryFilter !== 'all' ? 'Nada corresponde ao filtro' : 'Sem posts este mês — clica num dia para começar');
+
+    const dir = calDir; calDir = null;
     container.innerHTML = `
       <div class="cal-toolbar">
-        <div class="cal-month">${MESES[month]} <span class="cal-year">${year}</span></div>
+        <div>
+          <div class="cal-month">${MESES[month]} <span class="cal-year">${year}</span></div>
+          <div class="cal-summary">${summary}</div>
+        </div>
         <div class="cal-nav">
           <button data-cal="today" class="cal-today">Hoje</button>
-          <button data-cal="prev" title="Mês anterior" aria-label="Mês anterior">‹</button>
-          <button data-cal="next" title="Mês seguinte" aria-label="Mês seguinte">›</button>
+          <button data-cal="prev" title="Mês anterior (←)" aria-label="Mês anterior">‹</button>
+          <button data-cal="next" title="Mês seguinte (→)" aria-label="Mês seguinte">›</button>
         </div>
       </div>
-      <div class="calendar">
+      <div class="calendar ${dir ? 'slide-' + dir : ''}">
         <div class="cal-weekdays">${DIAS_SEMANA.map(d => `<div>${d}</div>`).join('')}</div>
         <div class="cal-grid">${cells}</div>
       </div>`;
   }
 
   // ---- Ideias
-  function renderIdeas(container) {
-    const items = state.ideas.filter(passesFilter).sort((a, b) => b.createdAt - a.createdAt);
+  function renderIdeas(container, animate) {
+    const items = state.ideas.filter(visible).sort((a, b) => b.createdAt - a.createdAt);
     if (!items.length) {
-      container.innerHTML = emptyState('✦', 'Sem ideias em carteira',
-        'Despeja aqui ideias de posts, campanhas e ângulos de comunicação antes que se percam.');
+      container.innerHTML = searchQuery
+        ? emptyState('✦', 'Sem resultados', 'Nenhuma ideia corresponde à tua pesquisa.')
+        : emptyState('✦', 'Sem ideias em carteira',
+          'Despeja aqui ideias de posts, campanhas e ângulos de comunicação antes que se percam.', 'Nova ideia');
       return;
     }
-    container.innerHTML = `<div class="board">` + items.map(it => {
+    container.innerHTML = `<div class="board">` + items.map((it, i) => {
       const cat = categoryById(it.categoryId);
       const accent = cat ? cat.color : 'var(--line)';
-      return `<div class="card" data-idea="${it.id}">
+      const anim = animate ? ` rise" style="animation-delay:${Math.min(i, 14) * 26}ms` : '';
+      return `<div class="card${anim}" data-idea="${it.id}">
         <div class="card-accent" style="background:${esc(accent)}"></div>
         <button class="icon-btn card-del" data-del-idea="${it.id}" title="Eliminar">🗑</button>
         <div class="card-inner">
@@ -270,18 +316,22 @@
   }
 
   // ---- Tarefas
-  function renderTasks(container) {
-    const items = state.tasks.filter(passesFilter);
+  function renderTasks(container, animate) {
+    const items = state.tasks.filter(visible);
     if (!items.length) {
-      container.innerHTML = emptyState('▸', 'Nada por fazer',
-        'Cria tarefas para manteres a comunicação a andar — do briefing à publicação.');
+      container.innerHTML = searchQuery
+        ? emptyState('▸', 'Sem resultados', 'Nenhuma tarefa corresponde à tua pesquisa.')
+        : emptyState('▸', 'Nada por fazer',
+          'Cria tarefas para manteres a comunicação a andar — do briefing à publicação.', 'Nova tarefa');
       return;
     }
     const pending = items.filter(t => !t.done).sort((a, b) => b.createdAt - a.createdAt);
     const done = items.filter(t => t.done).sort((a, b) => b.createdAt - a.createdAt);
+    let i = 0;
     const row = t => {
       const cat = categoryById(t.categoryId);
-      return `<div class="task ${t.done ? 'done' : ''}">
+      const anim = animate ? ` rise" style="animation-delay:${Math.min(i++, 16) * 22}ms` : '';
+      return `<div class="task ${t.done ? 'done' : ''}${anim}">
         <input type="checkbox" class="task-check" data-toggle-task="${t.id}" ${t.done ? 'checked' : ''} aria-label="Concluir tarefa">
         <div class="task-main" data-task="${t.id}">
           <div class="task-title">${esc(t.title)}</div>
@@ -299,9 +349,10 @@
     </div>`;
   }
 
-  function emptyState(glyph, title, sub) {
+  function emptyState(glyph, title, sub, ctaLabel) {
     return `<div class="empty"><div class="empty-glyph">${glyph}</div>
-      <h3>${esc(title)}</h3><p>${esc(sub)}</p></div>`;
+      <h3>${esc(title)}</h3><p>${esc(sub)}</p>
+      ${ctaLabel ? `<button class="primary-btn empty-cta" data-empty-cta>${esc(ctaLabel)}</button>` : ''}</div>`;
   }
 
   // ============================================================ MODAL
@@ -580,18 +631,36 @@
   lightbox.addEventListener('click', () => { lightbox.hidden = true; lightboxImg.src = ''; });
 
   // ============================================================ EVENTOS
-  document.getElementById('nav').addEventListener('click', e => {
-    const btn = e.target.closest('.nav-item'); if (!btn) return;
-    currentView = btn.dataset.view; render();
-  });
-
-  document.getElementById('primary-action').addEventListener('click', () => {
+  function switchView(v) {
+    if (v === currentView) return;
+    currentView = v; localStorage.setItem('castlesbay-view', v);
+    calDir = null; animateNext = true; render();
+    document.getElementById('view-container').scrollTop = 0;
+  }
+  function navMonth(dir) {
+    calDir = dir; calRef.setMonth(calRef.getMonth() + (dir === 'next' ? 1 : -1));
+    calRef = new Date(calRef); animateNext = true; render();
+  }
+  function goToday() {
+    const now = new Date();
+    calDir = (now < calRef) ? 'prev' : 'next';
+    calRef = now; animateNext = true; render();
+  }
+  function primaryAction() {
     if (currentView === 'calendar') openPostModal(null, null);
     else if (currentView === 'ideas') openIdeaModal(null);
     else openTaskModal(null);
-  });
+  }
 
-  document.getElementById('category-filter').addEventListener('change', e => { categoryFilter = e.target.value; render(); });
+  document.getElementById('nav').addEventListener('click', e => {
+    const btn = e.target.closest('.nav-item'); if (!btn) return;
+    switchView(btn.dataset.view);
+  });
+  document.getElementById('primary-action').addEventListener('click', primaryAction);
+  document.getElementById('category-filter').addEventListener('change', e => { categoryFilter = e.target.value; animateNext = false; render(); });
+
+  const searchInput = document.getElementById('search-input');
+  searchInput.addEventListener('input', () => { searchQuery = searchInput.value.trim(); animateNext = false; render(); });
   document.getElementById('add-category-btn').addEventListener('click', () => openCategoryModal(null));
 
   document.getElementById('category-list').addEventListener('click', e => {
@@ -608,49 +677,117 @@
   });
 
   document.getElementById('view-container').addEventListener('click', e => {
+    const emptyCta = e.target.closest('[data-empty-cta]'); if (emptyCta) { primaryAction(); return; }
     const calBtn = e.target.closest('[data-cal]');
     if (calBtn) {
       const dir = calBtn.dataset.cal;
-      if (dir === 'today') calRef = new Date();
-      else calRef.setMonth(calRef.getMonth() + (dir === 'next' ? 1 : -1));
-      calRef = new Date(calRef); render(); return;
+      if (dir === 'today') goToday(); else navMonth(dir);
+      return;
     }
     const postEl = e.target.closest('[data-post]'); if (postEl) { openPostModal(postEl.dataset.post); return; }
     const cell = e.target.closest('[data-day]'); if (cell) { openPostModal(null, cell.dataset.day); return; }
 
-    const delIdea = e.target.closest('[data-del-idea]'); if (delIdea) { removeItem('ideas', delIdea.dataset.delIdea, 'Ideia eliminada.'); return; }
+    const delIdea = e.target.closest('[data-del-idea]'); if (delIdea) { deleteWithUndo('ideas', delIdea.dataset.delIdea); return; }
     const ideaCard = e.target.closest('[data-idea]'); if (ideaCard) { openIdeaModal(ideaCard.dataset.idea); return; }
 
     const toggle = e.target.closest('[data-toggle-task]');
-    if (toggle) { const t = state.tasks.find(x => x.id === toggle.dataset.toggleTask); if (t) { t.done = !t.done; save(); render(); } return; }
-    const delTask = e.target.closest('[data-del-task]'); if (delTask) { removeItem('tasks', delTask.dataset.delTask, 'Tarefa eliminada.'); return; }
+    if (toggle) { const t = state.tasks.find(x => x.id === toggle.dataset.toggleTask); if (t) { t.done = !t.done; save(); animateNext = false; render(); } return; }
+    const delTask = e.target.closest('[data-del-task]'); if (delTask) { deleteWithUndo('tasks', delTask.dataset.delTask); return; }
     const taskMain = e.target.closest('[data-task]'); if (taskMain) { openTaskModal(taskMain.dataset.task); return; }
   });
 
-  async function removeItem(key, id, msg) {
-    const labels = { posts: 'este post', ideas: 'esta ideia', tasks: 'esta tarefa' };
-    const ok = await confirmDialog({
-      title: 'Eliminar',
-      message: `Eliminar ${labels[key] || 'este item'}? Não pode ser anulado.`,
-      confirmLabel: 'Eliminar'
+  const DEL_MSG = {
+    posts: ['Post eliminado', 'Post reposto'],
+    ideas: ['Ideia eliminada', 'Ideia reposta'],
+    tasks: ['Tarefa eliminada', 'Tarefa reposta']
+  };
+  function deleteWithUndo(key, id) {
+    const idx = state[key].findIndex(x => x.id === id);
+    if (idx === -1) return;
+    const [removed] = state[key].splice(idx, 1);
+    save(); if (!backdrop.hidden) closeModal(); animateNext = false; render();
+    let undone = false;
+    toast(DEL_MSG[key][0], {
+      actionLabel: 'Anular', duration: 5200,
+      onAction: () => {
+        undone = true;
+        state[key].splice(Math.min(idx, state[key].length), 0, removed);
+        save(); animateNext = false; render(); toast(DEL_MSG[key][1]);
+      },
+      onExpire: () => { if (!undone && key === 'posts') (removed.images || []).forEach(imgId => IMAGES.remove(imgId)); }
     });
-    if (!ok) return;
-    if (key === 'posts') { const p = state.posts.find(x => x.id === id); if (p) (p.images || []).forEach(imgId => IMAGES.remove(imgId)); }
-    state[key] = state[key].filter(x => x.id !== id);
-    save(); if (!backdrop.hidden) closeModal(); render(); toast(msg);
   }
 
   document.getElementById('modal-close').addEventListener('click', closeModal);
   backdrop.addEventListener('click', e => {
     if (e.target === backdrop || e.target.closest('[data-close]')) { closeModal(); return; }
-    const dp = e.target.closest('[data-del-post]'); if (dp) removeItem('posts', dp.dataset.delPost, 'Post eliminado.');
-    const di = e.target.closest('[data-del-idea]'); if (di) removeItem('ideas', di.dataset.delIdea, 'Ideia eliminada.');
-    const dt = e.target.closest('[data-del-task]'); if (dt) removeItem('tasks', dt.dataset.delTask, 'Tarefa eliminada.');
+    const dp = e.target.closest('[data-del-post]'); if (dp) deleteWithUndo('posts', dp.dataset.delPost);
+    const di = e.target.closest('[data-del-idea]'); if (di) deleteWithUndo('ideas', di.dataset.delIdea);
+    const dt = e.target.closest('[data-del-task]'); if (dt) deleteWithUndo('tasks', dt.dataset.delTask);
   });
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
     if (!lightbox.hidden) { lightbox.hidden = true; lightboxImg.src = ''; }
     else if (!backdrop.hidden) closeModal();
+  });
+
+  // ---- Arrastar posts entre dias para reagendar
+  const vc = document.getElementById('view-container');
+  vc.addEventListener('dragstart', e => {
+    const p = e.target.closest('.cal-post[data-post]'); if (!p) return;
+    dragPostId = p.dataset.post; p.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    try { e.dataTransfer.setData('text/plain', dragPostId); } catch {}
+  });
+  vc.addEventListener('dragend', () => {
+    dragPostId = null;
+    vc.querySelectorAll('.dragging').forEach(x => x.classList.remove('dragging'));
+    vc.querySelectorAll('.drop-target').forEach(x => x.classList.remove('drop-target'));
+  });
+  vc.addEventListener('dragover', e => {
+    if (!dragPostId) return;
+    const cell = e.target.closest('.cal-cell[data-day]'); if (!cell) return;
+    e.preventDefault(); e.dataTransfer.dropEffect = 'move';
+    if (!cell.classList.contains('drop-target')) {
+      vc.querySelectorAll('.drop-target').forEach(x => x.classList.remove('drop-target'));
+      cell.classList.add('drop-target');
+    }
+  });
+  vc.addEventListener('drop', e => {
+    if (!dragPostId) return;
+    const cell = e.target.closest('.cal-cell[data-day]'); if (!cell) return;
+    e.preventDefault();
+    const post = state.posts.find(p => p.id === dragPostId);
+    const newDate = cell.dataset.day; dragPostId = null;
+    if (post && post.date !== newDate) {
+      post.date = newDate; save(); animateNext = false; render();
+      toast('Reagendado para ' + formatDatePT(newDate));
+    }
+  });
+
+  // ---- Atalhos de teclado
+  document.addEventListener('keydown', e => {
+    const tag = (document.activeElement && document.activeElement.tagName) || '';
+    const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(tag);
+    const overlay = !backdrop.hidden || !lightbox.hidden || document.querySelector('.confirm-backdrop');
+    if (overlay) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && !backdrop.hidden) {
+        const btn = modalBody.querySelector('#p-save, #i-save, #t-save, #cat-save');
+        if (btn) { e.preventDefault(); btn.click(); }
+      }
+      return;
+    }
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (typing) { if (e.key === 'Escape') document.activeElement.blur(); return; }
+    switch (e.key) {
+      case '1': switchView('calendar'); break;
+      case '2': switchView('ideas'); break;
+      case '3': switchView('tasks'); break;
+      case 'n': case 'N': e.preventDefault(); primaryAction(); break;
+      case '/': e.preventDefault(); searchInput.focus(); break;
+      case 'ArrowLeft': if (currentView === 'calendar') navMonth('prev'); break;
+      case 'ArrowRight': if (currentView === 'calendar') navMonth('next'); break;
+    }
   });
 
   // Export / Import

@@ -12,6 +12,15 @@ Corre no browser, sincroniza entre dispositivos e funciona offline como reserva.
 - **Ideias** — mural para apontar ideias de posts, campanhas e ângulos.
 - **Tarefas** — lista com checkbox, separada entre "a fazer" e "concluídas".
 
+## Interação
+
+- **Arrastar** um post para outro dia reagenda-o.
+- **Anular** (undo) ao eliminar posts, ideias ou tarefas.
+- **Pesquisa** no topo filtra a vista atual; o filtro de **categoria** também.
+- **Tema** claro/escuro (escuro por defeito) e memória da última vista.
+- **Atalhos**: `1/2/3` mudam de vista · `N` cria · `←/→` muda de mês ·
+  `/` foca a pesquisa · `⌘/Ctrl+Enter` guarda · `Esc` fecha.
+
 ## Categorias partilhadas
 
 Crias categorias com **nome + cor** (botão `＋` em "Categorias"; o lápis edita

@@ -427,7 +427,61 @@ button { font-family: inherit; cursor: pointer; color: inherit; }
 }
 @keyframes toastin { from { transform: translate(-50%, 14px); opacity: 0; } }
 
-@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; } }
+/* ------------------------------------------------------------ SEARCH */
+.search { display: flex; align-items: center; gap: 8px; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 0 12px; height: 40px; transition: border-color .18s, box-shadow .18s; }
+.search:focus-within { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-tint); }
+.search-ico { color: var(--text-faint); font-size: 16px; }
+.search input { background: transparent; border: none; outline: none; color: var(--text); font-family: inherit; font-size: 13px; letter-spacing: .02em; width: 168px; }
+.search input::placeholder { color: var(--text-faint); }
+.search input::-webkit-search-cancel-button { -webkit-appearance: none; }
+
+/* ------------------------------------------------------------ MOTION */
+@keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes slideFromRight { from { opacity: 0; transform: translateX(34px); } to { opacity: 1; transform: none; } }
+@keyframes slideFromLeft { from { opacity: 0; transform: translateX(-34px); } to { opacity: 1; transform: none; } }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+.rise { animation: rise .46s cubic-bezier(.2, .8, .2, 1) both; }
+.view-enter { animation: fadeUp .34s cubic-bezier(.2, .8, .2, 1) both; }
+.calendar.slide-next { animation: slideFromRight .38s cubic-bezier(.2, .8, .2, 1) both; }
+.calendar.slide-prev { animation: slideFromLeft .38s cubic-bezier(.2, .8, .2, 1) both; }
+
+.cal-month, .cal-summary { animation: fadeUp .34s ease both; }
+.cal-post { animation: fadeUp .3s ease both; }
+.nav-item, .cat-row, .primary-btn, .cal-nav button, .card, .task, .chip, .cal-daynum {
+  transition: background .18s, color .18s, border-color .18s, transform .14s cubic-bezier(.2,.8,.2,1), box-shadow .2s, filter .16s;
+}
+.cal-nav button:active, .icon-btn:active { transform: scale(.92); }
+
+/* ------------------------------------------------------------ DRAG & DROP */
+.cal-post { cursor: grab; }
+.cal-post:active { cursor: grabbing; }
+.cal-post.dragging { opacity: .35; }
+.cal-cell.drop-target { background: var(--gold-tint); box-shadow: inset 0 0 0 2px var(--gold-line); }
+.cal-cell.drop-target .cal-daynum { color: var(--gold-bright); }
+
+/* ------------------------------------------------------------ MONTH SUMMARY */
+.cal-summary { font-size: 11.5px; color: var(--text-faint); letter-spacing: .04em; display: flex; gap: 14px; margin-top: 6px; }
+.cal-summary b { color: var(--text-soft); font-weight: 500; font-variant-numeric: tabular-nums; }
+.cal-summary .dot-sep { color: var(--gold); }
+
+/* ------------------------------------------------------------ EMPTY CTA */
+.empty-cta { margin-top: 22px; }
+
+/* ------------------------------------------------------------ TOAST ACTION */
+.toast { display: inline-flex; align-items: center; gap: 16px; }
+.toast-action { background: transparent; border: none; color: var(--gold-bright); font-family: inherit; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .16em; cursor: pointer; padding: 0; }
+.toast-action:hover { text-decoration: underline; }
+
+/* keyboard hint in empty state */
+.kbd { font-family: ui-monospace, monospace; font-size: 11px; background: var(--surface-3); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; color: var(--text-soft); }
+
+@media (max-width: 900px) { .search input { width: 120px; } }
+@media (max-width: 560px) { .search { display: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+}
 
 /* ------------------------------------------------------------ RESPONSIVE */
 @media (max-width: 900px) {
