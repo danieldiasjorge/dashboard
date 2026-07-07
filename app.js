@@ -835,6 +835,23 @@
   }
   document.getElementById('sync-btn').addEventListener('click', openSyncModal);
 
+  // ============================================================ TEMA
+  const THEME = {
+    key: 'castlesbay-theme',
+    get() { return localStorage.getItem(this.key) || 'dark'; },
+    apply(t) {
+      document.documentElement.setAttribute('data-theme', t);
+      const b = document.getElementById('theme-toggle');
+      if (b) b.textContent = t === 'dark' ? 'Tema claro' : 'Tema escuro';
+    },
+    toggle() {
+      const next = this.get() === 'dark' ? 'light' : 'dark';
+      localStorage.setItem(this.key, next); this.apply(next);
+    }
+  };
+  document.getElementById('theme-toggle').addEventListener('click', () => THEME.toggle());
+  THEME.apply(THEME.get());
+
   // ============================================================ ARRANQUE
   render();
   SYNC.init();

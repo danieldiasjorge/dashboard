@@ -38,33 +38,8 @@
 
 :root[data-theme="dark"] { color-scheme: dark; }
 
-/* Tema claro — o "cartão de visita": marfim, tinta e ouro */
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) {
-    --bg: #ece7db;
-    --bg-2: #f2eee4;
-    --surface: #f7f4ec;
-    --surface-2: #efeadd;
-    --surface-3: #e4ddcb;
-    --line: #d8cfb8;
-    --line-soft: #e2dac6;
-    --gold: #9a7b3f;
-    --gold-bright: #b8965a;
-    --gold-deep: #7d6230;
-    --gold-tint: rgba(154, 123, 63, .12);
-    --gold-line: rgba(154, 123, 63, .30);
-    --text: #1b1813;
-    --text-soft: #5f574a;
-    --text-faint: #938a78;
-    --good: #4f7a58;
-    --good-tint: rgba(79, 122, 88, .14);
-    --danger: #b0524d;
-    --shadow: 0 26px 70px rgba(60, 50, 30, .22);
-    --shadow-sm: 0 2px 14px rgba(60, 50, 30, .12);
-    --gold-grad: linear-gradient(135deg, #b8965a 0%, #9a7b3f 50%, #7d6230 100%);
-    color-scheme: light;
-  }
-}
+/* Tema claro — o "cartão de visita": marfim, tinta e ouro.
+   Só se aplica quando escolhido (data-theme="light"); nunca automático. */
 :root[data-theme="light"] {
   --bg: #ece7db; --bg-2: #f2eee4; --surface: #f7f4ec; --surface-2: #efeadd;
   --surface-3: #e4ddcb; --line: #d8cfb8; --line-soft: #e2dac6;

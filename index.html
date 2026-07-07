@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+  <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('castlesbay-theme') || 'dark');</script>
   <div id="app">
     <!-- Rail -->
     <aside class="rail">
@@ -49,6 +50,7 @@
           <span id="sync-label">Só neste dispositivo</span>
         </button>
         <div class="rail-tools">
+          <button id="theme-toggle" class="ghost-btn" title="Alternar tema claro/escuro">Tema claro</button>
           <button id="export-btn" class="ghost-btn" title="Guardar cópia de segurança">Exportar</button>
           <button id="import-btn" class="ghost-btn" title="Restaurar cópia de segurança">Importar</button>
           <input type="file" id="import-file" accept="application/json" hidden />
