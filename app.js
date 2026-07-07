@@ -318,6 +318,33 @@
   }
   function closeModal() { backdrop.hidden = true; modalBody.innerHTML = ''; }
 
+  // Confirmação própria (o confirm() do browser é bloqueado em iframes sandboxed)
+  function confirmDialog({ title = 'Confirmar', message = '', confirmLabel = 'Confirmar', danger = true } = {}) {
+    return new Promise(resolve => {
+      const bd = document.createElement('div');
+      bd.className = 'confirm-backdrop';
+      bd.innerHTML = `<div class="confirm" role="alertdialog" aria-modal="true">
+        <h3>${esc(title)}</h3>
+        ${message ? `<p>${esc(message)}</p>` : ''}
+        <div class="confirm-actions">
+          <button class="btn-secondary" data-cancel>Cancelar</button>
+          <button class="primary-btn ${danger ? 'danger' : ''}" data-ok>${esc(confirmLabel)}</button>
+        </div></div>`;
+      document.body.appendChild(bd);
+      const done = val => { bd.remove(); document.removeEventListener('keydown', onKey, true); resolve(val); };
+      const onKey = e => {
+        if (e.key === 'Escape') { e.stopPropagation(); done(false); }
+        else if (e.key === 'Enter') { e.stopPropagation(); done(true); }
+      };
+      bd.addEventListener('click', e => {
+        if (e.target === bd || e.target.closest('[data-cancel]')) done(false);
+        else if (e.target.closest('[data-ok]')) done(true);
+      });
+      document.addEventListener('keydown', onKey, true);
+      bd.querySelector('[data-ok]').focus();
+    });
+  }
+
   function categorySelectOptions(selectedId) {
     if (!state.categories.length) return `<option value="">(sem categorias)</option>`;
     return `<option value="">— Sem categoria —</option>` +
@@ -361,12 +388,17 @@
     });
   }
 
-  function deleteCategory(id) {
+  async function deleteCategory(id) {
+    const cat = categoryById(id);
     const used = countForCategory(id);
-    const msg = used
-      ? `Esta categoria está em ${used} item(ns). Ao eliminar, esses itens ficam sem categoria. Continuar?`
-      : 'Eliminar esta categoria?';
-    if (!confirm(msg)) return;
+    const ok = await confirmDialog({
+      title: 'Eliminar categoria',
+      message: used
+        ? `“${cat ? cat.name : ''}” está em ${used} item(ns). Ao eliminar, esses itens ficam sem categoria.`
+        : `Eliminar a categoria “${cat ? cat.name : ''}”?`,
+      confirmLabel: 'Eliminar'
+    });
+    if (!ok) return;
     state.categories = state.categories.filter(c => c.id !== id);
     ['posts', 'ideas', 'tasks'].forEach(k => state[k].forEach(it => { if (it.categoryId === id) it.categoryId = ''; }));
     if (categoryFilter === id) categoryFilter = 'all';
@@ -595,8 +627,14 @@
     const taskMain = e.target.closest('[data-task]'); if (taskMain) { openTaskModal(taskMain.dataset.task); return; }
   });
 
-  function removeItem(key, id, msg) {
-    if (!confirm('Eliminar definitivamente?')) return;
+  async function removeItem(key, id, msg) {
+    const labels = { posts: 'este post', ideas: 'esta ideia', tasks: 'esta tarefa' };
+    const ok = await confirmDialog({
+      title: 'Eliminar',
+      message: `Eliminar ${labels[key] || 'este item'}? Não pode ser anulado.`,
+      confirmLabel: 'Eliminar'
+    });
+    if (!ok) return;
     if (key === 'posts') { const p = state.posts.find(x => x.id === id); if (p) (p.images || []).forEach(imgId => IMAGES.remove(imgId)); }
     state[key] = state[key].filter(x => x.id !== id);
     save(); if (!backdrop.hidden) closeModal(); render(); toast(msg);
@@ -629,11 +667,16 @@
   document.getElementById('import-file').addEventListener('change', e => {
     const file = e.target.files[0]; if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       try {
         const data = JSON.parse(reader.result);
         if (!Array.isArray(data.categories) || !Array.isArray(data.posts)) throw new Error('formato');
-        if (!confirm('Isto substitui todos os dados actuais neste dispositivo. Continuar?')) return;
+        const ok = await confirmDialog({
+          title: 'Importar dados',
+          message: 'Isto substitui todos os dados actuais neste dispositivo.',
+          confirmLabel: 'Importar'
+        });
+        if (!ok) return;
         const images = data._images || {};
         delete data._images;
         state = normalizeState(data); persistLocal();
