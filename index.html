@@ -39,6 +39,11 @@
         <ul id="category-list" class="category-list"></ul>
       </div>
 
+      <button id="sync-btn" class="sync-status" title="Sincronização">
+        <span class="sync-dot"></span>
+        <span id="sync-label">Só neste dispositivo</span>
+      </button>
+
       <footer class="sidebar-foot">
         <button id="export-btn" class="ghost-btn" title="Guardar cópia de segurança">⬇ Exportar</button>
         <button id="import-btn" class="ghost-btn" title="Restaurar cópia de segurança">⬆ Importar</button>
@@ -77,6 +82,14 @@
   </div>
 
   <div id="toast" class="toast" hidden></div>
+
+  <!-- Firebase SDK (compat) — usado para sincronização entre dispositivos.
+       Se não houver rede ou configuração, a app funciona só neste dispositivo. -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <!-- Configuração opcional: se preencheres config.js, sincroniza sem colar nada em cada dispositivo. -->
+  <script src="config.js" onerror="void 0"></script>
 
   <script src="app.js"></script>
 </body>

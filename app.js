@@ -43,25 +43,33 @@
     return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   }
 
+  function normalizeState(obj) {
+    const s = (obj && typeof obj === 'object') ? obj : {};
+    s.categories = Array.isArray(s.categories) ? s.categories : [];
+    s.posts = Array.isArray(s.posts) ? s.posts : [];
+    s.ideas = Array.isArray(s.ideas) ? s.ideas : [];
+    s.tasks = Array.isArray(s.tasks) ? s.tasks : [];
+    return s;
+  }
+
   function loadState() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return defaultState();
-      const parsed = JSON.parse(raw);
-      // saneamento mínimo
-      parsed.categories ||= [];
-      parsed.posts ||= [];
-      parsed.ideas ||= [];
-      parsed.tasks ||= [];
-      return parsed;
+      return normalizeState(JSON.parse(raw));
     } catch (e) {
       console.warn('Estado inválido, a recomeçar.', e);
       return defaultState();
     }
   }
 
-  function save() {
+  function persistLocal() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }
+
+  function save() {
+    persistLocal();
+    if (SYNC.ready && !SYNC.applyingRemote) SYNC.push();
   }
 
   function categoryById(id) {
@@ -635,6 +643,192 @@
     e.target.value = '';
   });
 
+  // ============================================================ SINCRONIZAÇÃO (Firebase)
+
+  const SYNC = {
+    ready: false,
+    applyingRemote: false,
+    docRef: null,
+    unsub: null,
+    pushTimer: null,
+    configKey: 'castlesbay-firebase-config',
+    clientId: (localStorage.getItem('castlesbay-client') ||
+      (v => (localStorage.setItem('castlesbay-client', v), v))(uid())),
+
+    getConfig() {
+      // config.js (committed) tem prioridade; caso contrário, o que foi colado na app.
+      if (typeof window.FIREBASE_CONFIG === 'object' && window.FIREBASE_CONFIG) return window.FIREBASE_CONFIG;
+      try { return JSON.parse(localStorage.getItem(this.configKey) || 'null'); }
+      catch { return null; }
+    },
+    saveConfig(cfg) { localStorage.setItem(this.configKey, JSON.stringify(cfg)); },
+    clearConfig() { localStorage.removeItem(this.configKey); },
+
+    async init() {
+      const cfg = this.getConfig();
+      if (!cfg || !cfg.apiKey || !cfg.projectId) { this.setStatus('offline'); return; }
+      if (typeof firebase === 'undefined') { this.setStatus('error', 'SDK do Firebase não carregou (sem rede?).'); return; }
+      try {
+        this.setStatus('syncing', 'A ligar…');
+        if (!firebase.apps.length) firebase.initializeApp(cfg);
+        await firebase.auth().signInAnonymously();
+        const db = firebase.firestore();
+        this.docRef = db.collection('escritorio').doc('dados');
+        this.subscribe();
+      } catch (e) {
+        console.error(e);
+        this.setStatus('error', friendlyFbError(e));
+      }
+    },
+
+    subscribe() {
+      this.unsub = this.docRef.onSnapshot(snap => {
+        if (!snap.exists) {
+          // Primeiro arranque: semeia a cloud com o que existe localmente.
+          this.ready = true;
+          this.push(true);
+          this.setStatus('online');
+          return;
+        }
+        const data = snap.data();
+        // Ignora o eco da nossa própria escrita.
+        if (data.updatedBy === this.clientId) { this.ready = true; this.setStatus('online'); return; }
+        try {
+          const remote = JSON.parse(data.payload);
+          this.applyingRemote = true;
+          state = normalizeState(remote);
+          persistLocal();
+          this.applyingRemote = false;
+          this.ready = true;
+          render();
+          this.setStatus('online');
+        } catch (e) { console.warn('payload remoto inválido', e); this.ready = true; this.setStatus('online'); }
+      }, err => { console.error(err); this.setStatus('error', friendlyFbError(err)); });
+    },
+
+    push(immediate) {
+      if (!this.docRef) return;
+      clearTimeout(this.pushTimer);
+      const doWrite = () => {
+        this.setStatus('syncing', 'A guardar…');
+        this.docRef.set({
+          payload: JSON.stringify(state),
+          updatedBy: this.clientId,
+          updatedAt: Date.now()
+        }).then(() => this.setStatus('online'))
+          .catch(e => { console.error(e); this.setStatus('error', friendlyFbError(e)); });
+      };
+      if (immediate) doWrite(); else this.pushTimer = setTimeout(doWrite, 700);
+    },
+
+    async disconnect() {
+      if (this.unsub) this.unsub();
+      this.unsub = null; this.docRef = null; this.ready = false;
+      this.clearConfig();
+      try { if (typeof firebase !== 'undefined' && firebase.apps.length) await firebase.app().delete(); } catch {}
+      this.setStatus('offline');
+    },
+
+    setStatus(kind, detail) {
+      this._status = { kind, detail };
+      const btn = document.getElementById('sync-btn');
+      const label = document.getElementById('sync-label');
+      btn.classList.remove('online', 'syncing', 'error');
+      const map = {
+        offline: 'Só neste dispositivo',
+        online: 'Sincronizado ☁',
+        syncing: detail || 'A sincronizar…',
+        error: 'Erro de sincronização'
+      };
+      if (kind !== 'offline') btn.classList.add(kind);
+      label.textContent = map[kind] || map.offline;
+      btn.title = detail || map[kind] || '';
+    }
+  };
+
+  function friendlyFbError(e) {
+    const c = (e && e.code) || '';
+    if (c.includes('permission-denied')) return 'Sem permissão. Verifica as regras do Firestore e o login anónimo.';
+    if (c.includes('unavailable')) return 'Sem ligação à cloud de momento.';
+    if (c.includes('auth')) return 'Ativa o método "Anónimo" em Authentication no Firebase.';
+    return (e && e.message) || 'Erro desconhecido.';
+  }
+
+  // ---- Modal de sincronização
+  function openSyncModal() {
+    const usingFile = typeof window.FIREBASE_CONFIG === 'object' && !!window.FIREBASE_CONFIG;
+    const connected = SYNC.ready || (SYNC._status && SYNC._status.kind === 'online');
+    const st = SYNC._status || { kind: 'offline' };
+    const stateText = {
+      offline: 'Não ligado — os dados ficam só neste dispositivo.',
+      online: 'Ligado. Os dados sincronizam entre os teus dispositivos.',
+      syncing: 'A sincronizar…',
+      error: 'Erro: ' + (st.detail || '')
+    }[st.kind];
+
+    openModal('Sincronização entre dispositivos', `
+      <div class="sync-state-line">
+        <span class="sync-dot" style="background:${st.kind === 'online' ? '#22c55e' : st.kind === 'error' ? 'var(--danger)' : 'var(--text-faint)'}"></span>
+        ${esc(stateText)}
+      </div>
+      ${usingFile ? `<p style="font-size:13px;color:var(--text-soft);margin:10px 0">Configuração definida no ficheiro <code>config.js</code>. Funciona automaticamente em todos os dispositivos.</p>` : `
+      <div class="sync-help">
+        Cola aqui a configuração do teu projeto Firebase (o objeto <code>firebaseConfig</code> que o Firebase te dá).
+        <ol>
+          <li>Firebase Console → cria projeto</li>
+          <li>Adiciona uma app <b>Web</b> e copia o <code>firebaseConfig</code></li>
+          <li>Ativa <b>Firestore Database</b> e <b>Authentication → Anónimo</b></li>
+        </ol>
+      </div>
+      <div class="field">
+        <label>Configuração Firebase</label>
+        <textarea id="fb-config" placeholder='{ "apiKey": "…", "authDomain": "…", "projectId": "…", ... }' style="min-height:120px;font-family:monospace;font-size:12.5px">${esc(localStorage.getItem(SYNC.configKey) || '')}</textarea>
+      </div>`}
+      <div class="modal-actions">
+        ${(connected || localStorage.getItem(SYNC.configKey)) ? `<button class="btn-danger" id="fb-disconnect">Desligar</button>` : ''}
+        <button class="btn-secondary" data-close>Fechar</button>
+        ${usingFile ? '' : `<button class="primary-btn" id="fb-connect">Ligar</button>`}
+      </div>
+    `, () => {
+      const connectBtn = modalBody.querySelector('#fb-connect');
+      if (connectBtn) connectBtn.addEventListener('click', () => {
+        const raw = modalBody.querySelector('#fb-config').value.trim();
+        const cfg = parseFirebaseConfig(raw);
+        if (!cfg) { toast('Configuração inválida. Cola o objeto firebaseConfig completo.'); return; }
+        SYNC.saveConfig(cfg);
+        closeModal();
+        toast('A ligar à cloud…');
+        SYNC.init();
+      });
+      const disBtn = modalBody.querySelector('#fb-disconnect');
+      if (disBtn) disBtn.addEventListener('click', () => {
+        if (!confirm('Desligar a sincronização neste dispositivo? Os dados na cloud não são apagados.')) return;
+        SYNC.disconnect();
+        closeModal();
+        toast('Sincronização desligada.');
+      });
+    });
+  }
+
+  // Aceita JSON ou o objeto JS que o Firebase mostra (chaves sem aspas).
+  function parseFirebaseConfig(raw) {
+    if (!raw) return null;
+    let text = raw;
+    const s = raw.indexOf('{'), e = raw.lastIndexOf('}');
+    if (s !== -1 && e !== -1) text = raw.slice(s, e + 1);
+    // tenta JSON
+    try { const o = JSON.parse(text); if (o && o.apiKey) return o; } catch {}
+    // tenta objeto JS
+    try {
+      const o = (new Function('return (' + text + ')'))();
+      if (o && o.apiKey && o.projectId) return o;
+    } catch {}
+    return null;
+  }
+
+  document.getElementById('sync-btn').addEventListener('click', openSyncModal);
+
   // ============================================================ ARRANQUE
   render();
+  SYNC.init();
 })();

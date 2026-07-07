@@ -122,7 +122,30 @@ button { font-family: inherit; cursor: pointer; }
 }
 .icon-btn:hover { background: var(--border); color: var(--text); }
 
-.sidebar-foot { margin-top: auto; display: flex; gap: 6px; padding-top: 8px; }
+.sync-status {
+  display: flex; align-items: center; gap: 9px; width: 100%;
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 9px 11px; margin-top: auto;
+  font-size: 12.5px; font-weight: 550; color: var(--text-soft); text-align: left;
+  transition: border-color .15s;
+}
+.sync-status:hover { border-color: var(--border-strong); }
+.sync-dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; background: var(--text-faint); }
+.sync-status.online .sync-dot { background: #22c55e; box-shadow: 0 0 0 3px color-mix(in srgb, #22c55e 22%, transparent); }
+.sync-status.syncing .sync-dot { background: #f59e0b; }
+.sync-status.error .sync-dot { background: var(--danger); }
+#sync-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.sidebar-foot { display: flex; gap: 6px; padding-top: 8px; }
+
+.sync-help {
+  font-size: 12.5px; color: var(--text-soft); background: var(--surface-2);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 12px 14px; margin-bottom: 15px; line-height: 1.55;
+}
+.sync-help ol { margin: 8px 0 0 18px; display: flex; flex-direction: column; gap: 4px; }
+.sync-help code { background: var(--border); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+.sync-state-line { display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 600; margin-bottom: 4px; }
 .ghost-btn {
   flex: 1; background: transparent; border: 1px solid var(--border);
   color: var(--text-soft); padding: 7px; border-radius: var(--radius-sm);
