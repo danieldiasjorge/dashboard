@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Escritório Digital · Castles Bay</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">CB</div>
+        <div class="brand-text">
+          <strong>Escritório Digital</strong>
+          <span>Castles Bay</span>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <button class="nav-item" data-view="calendar">
+          <span class="nav-ico">📅</span> Calendário
+        </button>
+        <button class="nav-item" data-view="ideas">
+          <span class="nav-ico">💡</span> Ideias
+        </button>
+        <button class="nav-item" data-view="tasks">
+          <span class="nav-ico">✅</span> Tarefas
+        </button>
+      </nav>
+
+      <div class="cat-panel">
+        <div class="cat-panel-head">
+          <span>Categorias</span>
+          <button id="add-category-btn" class="icon-btn" title="Nova categoria">＋</button>
+        </div>
+        <ul id="category-list" class="category-list"></ul>
+      </div>
+
+      <footer class="sidebar-foot">
+        <button id="export-btn" class="ghost-btn" title="Guardar cópia de segurança">⬇ Exportar</button>
+        <button id="import-btn" class="ghost-btn" title="Restaurar cópia de segurança">⬆ Importar</button>
+        <input type="file" id="import-file" accept="application/json" hidden />
+      </footer>
+    </aside>
+
+    <!-- Main -->
+    <main class="main">
+      <header class="topbar">
+        <h1 id="view-title">Calendário</h1>
+        <div class="topbar-actions">
+          <label class="filter">
+            <span>Categoria</span>
+            <select id="category-filter">
+              <option value="all">Todas</option>
+            </select>
+          </label>
+          <button id="primary-action" class="primary-btn">＋ Novo</button>
+        </div>
+      </header>
+
+      <section id="view-container" class="view-container"></section>
+    </main>
+  </div>
+
+  <!-- Modal generic -->
+  <div id="modal-backdrop" class="modal-backdrop" hidden>
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modal-head">
+        <h2 id="modal-title">Título</h2>
+        <button id="modal-close" class="icon-btn" aria-label="Fechar">✕</button>
+      </div>
+      <div id="modal-body" class="modal-body"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
