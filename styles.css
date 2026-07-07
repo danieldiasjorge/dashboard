@@ -227,6 +227,38 @@ button { font-family: inherit; cursor: pointer; color: inherit; }
   text-transform: capitalize; display: flex; align-items: baseline; gap: 12px; color: var(--text);
 }
 .cal-month .cal-year { color: var(--gold); font-size: 18px; font-weight: 400; letter-spacing: .12em; }
+.cal-month[data-monthpicker] { cursor: pointer; border-radius: var(--radius-sm); transition: color .18s; outline: none; }
+.cal-month[data-monthpicker]:hover, .cal-month[data-monthpicker]:focus-visible { color: var(--gold-bright); }
+.cal-caret { font-size: 14px; color: var(--gold); margin-left: 2px; transition: transform .18s; display: inline-block; }
+.cal-month[data-monthpicker]:hover .cal-caret { transform: translateY(2px); }
+
+/* seletor de mês/ano */
+.month-picker {
+  position: fixed; z-index: 45; background: var(--surface); border: 1px solid var(--gold-line);
+  border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px; width: 268px;
+  animation: rise .2s cubic-bezier(.2,.8,.2,1) both;
+}
+.mp-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.mp-nav {
+  background: var(--surface-2); border: 1px solid var(--line); color: var(--text-soft);
+  width: 30px; height: 30px; border-radius: var(--radius-sm); font-size: 15px; transition: border-color .16s, color .16s;
+}
+.mp-nav:hover { border-color: var(--gold-line); color: var(--gold); }
+.mp-title {
+  background: transparent; border: none; font-family: var(--display); font-weight: 700; font-size: 17px;
+  color: var(--text); letter-spacing: .02em; padding: 4px 10px; border-radius: var(--radius-sm); transition: color .16s;
+}
+.mp-title:hover { color: var(--gold-bright); }
+.mp-grid { display: grid; gap: 6px; }
+.mp-months { grid-template-columns: repeat(4, 1fr); }
+.mp-years { grid-template-columns: repeat(4, 1fr); }
+.mp-cell {
+  background: var(--surface-2); border: 1px solid transparent; color: var(--text-soft);
+  padding: 9px 0; border-radius: var(--radius-sm); font-size: 12.5px; font-weight: 500;
+  text-transform: capitalize; letter-spacing: .02em; transition: background .16s, color .16s, border-color .16s;
+}
+.mp-cell:hover { background: var(--surface-3); color: var(--text); }
+.mp-cell.active { background: var(--gold-tint); border-color: var(--gold-line); color: var(--gold-bright); }
 .cal-nav { display: flex; align-items: center; gap: 8px; }
 .cal-nav button {
   background: var(--surface); border: 1px solid var(--line); color: var(--text-soft);

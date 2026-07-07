@@ -169,6 +169,7 @@
 
   function render() {
     const animate = animateNext;
+    closeMonthPicker();
     renderCategories();
     renderCategoryFilter();
     document.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.view === currentView));
@@ -286,7 +287,7 @@
     container.innerHTML = `
       <div class="cal-toolbar">
         <div>
-          <div class="cal-month">${MESES[month]} <span class="cal-year">${year}</span></div>
+          <div class="cal-month" data-monthpicker tabindex="0" role="button" aria-label="Escolher mês e ano" title="Escolher mês e ano">${MESES[month]} <span class="cal-year">${year}</span> <span class="cal-caret" aria-hidden="true">▾</span></div>
           <div class="cal-summary">${summary}</div>
         </div>
         <div class="cal-nav">
@@ -658,6 +659,74 @@
     else openTaskModal(null);
   }
 
+  // ---- Seletor rápido de mês / ano
+  function closeMonthPicker() {
+    const p = document.getElementById('month-picker');
+    if (p) { if (p._cleanup) p._cleanup(); p.remove(); }
+  }
+  function openMonthPicker(anchor) {
+    closeMonthPicker();
+    const pop = document.createElement('div');
+    pop.className = 'month-picker'; pop.id = 'month-picker';
+    document.body.appendChild(pop);
+    let mode = 'month';
+    let viewYear = calRef.getFullYear();
+    let decadeStart = viewYear - (viewYear % 12);
+
+    function draw() {
+      if (mode === 'month') {
+        pop.innerHTML = `
+          <div class="mp-head">
+            <button class="mp-nav" data-y="-1" aria-label="Ano anterior">‹</button>
+            <button class="mp-title" data-to-year>${viewYear}</button>
+            <button class="mp-nav" data-y="1" aria-label="Ano seguinte">›</button>
+          </div>
+          <div class="mp-grid mp-months">
+            ${MESES.map((m, i) => `<button class="mp-cell ${i === calRef.getMonth() && viewYear === calRef.getFullYear() ? 'active' : ''}" data-month="${i}">${m.slice(0, 3)}</button>`).join('')}
+          </div>`;
+      } else {
+        const years = Array.from({ length: 12 }, (_, i) => decadeStart + i);
+        pop.innerHTML = `
+          <div class="mp-head">
+            <button class="mp-nav" data-d="-1" aria-label="Recuar">‹</button>
+            <button class="mp-title">${decadeStart}–${decadeStart + 11}</button>
+            <button class="mp-nav" data-d="1" aria-label="Avançar">›</button>
+          </div>
+          <div class="mp-grid mp-years">
+            ${years.map(y => `<button class="mp-cell ${y === calRef.getFullYear() ? 'active' : ''}" data-year="${y}">${y}</button>`).join('')}
+          </div>`;
+      }
+    }
+    function position() {
+      const r = anchor.getBoundingClientRect();
+      pop.style.top = (r.bottom + 8) + 'px';
+      let left = r.left;
+      const overflow = left + pop.offsetWidth - window.innerWidth + 12;
+      if (overflow > 0) left -= overflow;
+      pop.style.left = Math.max(12, left) + 'px';
+    }
+
+    pop.addEventListener('click', e => {
+      e.stopPropagation();
+      const y = e.target.closest('[data-y]'); if (y) { viewYear += +y.dataset.y; draw(); return; }
+      const d = e.target.closest('[data-d]'); if (d) { decadeStart += (+d.dataset.d) * 12; draw(); return; }
+      if (e.target.closest('[data-to-year]')) { mode = 'year'; decadeStart = viewYear - (viewYear % 12); draw(); return; }
+      const yc = e.target.closest('[data-year]'); if (yc) { viewYear = +yc.dataset.year; mode = 'month'; draw(); return; }
+      const mc = e.target.closest('[data-month]');
+      if (mc) {
+        const newDate = new Date(viewYear, +mc.dataset.month, 1);
+        calDir = (newDate < calRef) ? 'prev' : 'next';
+        calRef = newDate; animateNext = true; closeMonthPicker(); render();
+      }
+    });
+
+    draw(); position();
+    const outside = e => { if (!pop.contains(e.target) && !anchor.contains(e.target)) closeMonthPicker(); };
+    const onEsc = e => { if (e.key === 'Escape') { closeMonthPicker(); anchor.focus(); } };
+    setTimeout(() => { document.addEventListener('click', outside); document.addEventListener('keydown', onEsc, true); }, 0);
+    pop._cleanup = () => { document.removeEventListener('click', outside); document.removeEventListener('keydown', onEsc, true); };
+  }
+
   document.getElementById('nav').addEventListener('click', e => {
     const btn = e.target.closest('.nav-item'); if (!btn) return;
     switchView(btn.dataset.view);
@@ -667,6 +736,11 @@
 
   const searchInput = document.getElementById('search-input');
   searchInput.addEventListener('input', () => { searchQuery = searchInput.value.trim(); animateNext = false; render(); });
+
+  document.getElementById('view-container').addEventListener('keydown', e => {
+    const trigger = e.target.closest('[data-monthpicker]');
+    if (trigger && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openMonthPicker(trigger); }
+  });
   document.getElementById('add-category-btn').addEventListener('click', () => openCategoryModal(null));
 
   document.getElementById('category-list').addEventListener('click', e => {
@@ -684,6 +758,7 @@
 
   document.getElementById('view-container').addEventListener('click', e => {
     const emptyCta = e.target.closest('[data-empty-cta]'); if (emptyCta) { primaryAction(); return; }
+    const mpTrigger = e.target.closest('[data-monthpicker]'); if (mpTrigger) { openMonthPicker(mpTrigger); return; }
     const calBtn = e.target.closest('[data-cal]');
     if (calBtn) {
       const dir = calBtn.dataset.cal;
