@@ -225,6 +225,16 @@
       <span class="cat-dot" style="background:${esc(cat.color)}"></span>${esc(cat.name)}</span>`;
   }
 
+  // etiqueta do post: 1.ª linha da legenda › título antigo › categoria › genérico
+  function postLabel(p) {
+    const line = (p.notes || '').split('\n')[0].trim();
+    if (line) return line;
+    if (p.title) return p.title;
+    const cat = categoryById(p.categoryId);
+    if (cat) return cat.name;
+    return (p.images && p.images.length) ? 'Imagem' : 'Post';
+  }
+
   // ---- Calendário
   function renderCalendar(container) {
     const year = calRef.getFullYear(), month = calRef.getMonth();
@@ -247,16 +257,17 @@
       const iso = toISO(d);
       const outside = d.getMonth() !== month;
       const isToday = iso === todayISO();
-      const dayPosts = (byDate[iso] || []).sort((a, b) => a.title.localeCompare(b.title));
+      const dayPosts = (byDate[iso] || []).sort((a, b) => postLabel(a).localeCompare(postLabel(b)));
 
       const pills = dayPosts.map(p => {
         const cat = categoryById(p.categoryId);
         const color = cat ? cat.color : '#8a8377';
         const media = (p.images && p.images.length) ? `<span class="cal-post-media">⧉${p.images.length}</span>` : '';
+        const label = postLabel(p);
         return `<div class="cal-post ${p.status === 'publicado' ? 'published' : ''}" draggable="true"
           style="background:${hexA(color, .15)};color:${color};border-left-color:${color}"
-          data-post="${p.id}" title="${esc(p.title)} — arrasta para reagendar">
-          <span class="cal-post-title">${esc(p.title)}</span>${media}</div>`;
+          data-post="${p.id}" title="${esc(label)} — arrasta para reagendar">
+          <span class="cal-post-title">${esc(label)}</span>${media}</div>`;
       }).join('');
 
       cells += `<div class="cal-cell ${outside ? 'outside' : ''} ${isToday ? 'today' : ''}" data-day="${iso}">
@@ -466,12 +477,8 @@
 
     openModal(editing ? 'Editar post' : 'Novo post', `
       <div class="field">
-        <label>Título do post</label>
-        <input type="text" id="p-title" maxlength="120" placeholder="Ex.: Reel dos bastidores" value="${editing ? esc(editing.title) : ''}">
-      </div>
-      <div class="field">
         <label>Descrição / legenda</label>
-        <textarea id="p-notes" placeholder="Escreve aqui a legenda, o guião, referências, hashtags…">${editing ? esc(editing.notes || '') : ''}</textarea>
+        <textarea id="p-notes" autofocus placeholder="Escreve aqui a legenda, o guião, referências, hashtags…">${editing ? esc(editing.notes || editing.title || '') : ''}</textarea>
       </div>
       <div class="field">
         <label>Imagens</label>
@@ -547,12 +554,11 @@
       }));
 
       modalBody.querySelector('#p-save').addEventListener('click', () => {
-        const title = modalBody.querySelector('#p-title').value.trim();
         const date = modalBody.querySelector('#p-date').value;
-        if (!title) { toast('Escreve o título do post.'); return; }
-        if (!date) { toast('Escolhe a data.'); return; }
         const categoryId = modalBody.querySelector('#p-cat').value;
         const notes = modalBody.querySelector('#p-notes').value.trim();
+        if (!date) { toast('Escolhe a data.'); return; }
+        if (!notes && !pending.length) { toast('Escreve a legenda ou adiciona uma imagem.'); return; }
 
         // guarda imagens novas; remove as retiradas
         const finalIds = [];
@@ -562,8 +568,8 @@
         });
         originalIds.forEach(id => { if (!finalIds.includes(id)) IMAGES.remove(id); });
 
-        if (editing) Object.assign(editing, { title, date, categoryId, notes, status, images: finalIds });
-        else state.posts.push({ id: uid(), title, date, categoryId, notes, status, images: finalIds });
+        if (editing) { Object.assign(editing, { date, categoryId, notes, status, images: finalIds }); delete editing.title; }
+        else state.posts.push({ id: uid(), date, categoryId, notes, status, images: finalIds });
         save(); closeModal(); render();
         toast(editing ? 'Post actualizado.' : 'Post adicionado ao calendário.');
       });
