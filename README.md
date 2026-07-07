@@ -1,39 +1,61 @@
-# Escritório Digital · Castles Bay
+# Castles Bay · Escritório de Comunicação
 
-Um escritório digital para gerir a comunicação das marcas da Castles Bay.
-Funciona inteiramente no browser — sem servidor, sem instalações, sem contas.
-Os dados ficam guardados no teu próprio browser (`localStorage`).
+Um posto de comando para gerir a comunicação das marcas da Castles Bay.
+Corre no browser, sincroniza entre dispositivos e funciona offline como reserva.
 
 ## Os três espaços
 
-- **📅 Calendário** — aponta os posts a fazer num calendário mensal. Cada post
-  tem título, data, categoria, estado (*Planeado* / *Publicado*) e notas/legenda.
-  Clica num dia para adicionar; clica num post para editar.
-- **💡 Ideias** — um mural para apontar ideias de posts e de comunicação.
-- **✅ Tarefas** — a tua lista de tarefas, com checkbox para marcar como concluídas.
+- **Calendário** — planeia os posts num calendário mensal. Cada post tem
+  título, **descrição/legenda**, **várias imagens**, data, categoria e estado
+  (*Planeado* / *Publicado*). Clica num dia para adicionar; clica num post para
+  editar. O calendário mostra a cor da categoria e um contador de imagens (`⧉`).
+- **Ideias** — mural para apontar ideias de posts, campanhas e ângulos.
+- **Tarefas** — lista com checkbox, separada entre "a fazer" e "concluídas".
 
 ## Categorias partilhadas
 
-Crias categorias com **nome + cor** (botão `＋` ao lado de "Categorias").
-As categorias aparecem nos três espaços: podes categorizar posts, ideias e
-tarefas, e usar o filtro no topo (ou clicar numa categoria na barra lateral)
-para ver apenas o que interessa.
+Crias categorias com **nome + cor** (botão `＋` em "Categorias"; o lápis edita
+nome e cor). Aparecem nos três espaços e servem de filtro (topo ou barra lateral).
+
+## Sincronização entre dispositivos (Firebase)
+
+Os dados sincronizam via Firestore quando ligas o Firebase:
+
+1. **console.firebase.google.com** → cria projeto.
+2. Adiciona uma app **Web** e copia o objeto `firebaseConfig`.
+3. Ativa **Firestore Database** e **Authentication → Anónimo**.
+4. Regras do Firestore:
+   ```
+   rules_version = '2';
+   service cloud.firestore {
+     match /databases/{database}/documents {
+       match /escritorio/{doc} { allow read, write: if request.auth != null; }
+       match /escritorio_imagens/{img} { allow read, write: if request.auth != null; }
+     }
+   }
+   ```
+5. Na app: botão de estado (canto inferior esquerdo) → colar `firebaseConfig` → **Ligar**.
+
+Para não colares em cada dispositivo, define o `firebaseConfig` no ficheiro
+`config.js` (ver `config.example.js`) — passa a funcionar automaticamente.
+
+O texto (categorias, posts, ideias, tarefas) vai num documento único; cada
+**imagem** vai num documento próprio (`escritorio_imagens`), para não esbarrar
+no limite de 1 MB por documento do Firestore.
 
 ## Cópias de segurança
 
-- **Exportar** — descarrega um ficheiro `.json` com tudo.
-- **Importar** — restaura a partir de um ficheiro exportado.
+- **Exportar / Importar** — `.json` com tudo (inclui as imagens).
 
-Como os dados vivem no browser, exporta de vez em quando (e antes de mudar de
-computador ou limpar o histórico do browser).
+## Publicar
 
-## Como usar
-
-Abre o `index.html` no browser. Basta um duplo-clique no ficheiro, ou publica
-a pasta em qualquer alojamento estático (ex.: GitHub Pages) e acede pelo link.
+Site estático — publica a pasta no **Vercel** (Add New → Project → importar o
+repositório → Deploy) ou noutro alojamento estático.
 
 ## Ficheiros
 
-- `index.html` — estrutura da página
-- `styles.css` — aspeto visual (tema claro e escuro automáticos)
-- `app.js` — toda a lógica (sem dependências externas)
+- `index.html` — estrutura
+- `fonts.css` — fontes embutidas (Syne + Archivo, SIL OFL)
+- `styles.css` — design ("Command Deck": escuro por defeito, tema claro incluído)
+- `app.js` — lógica (só o SDK do Firebase como dependência externa, para sync)
+- `config.example.js` — modelo para ativar a sincronização automática

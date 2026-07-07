@@ -3,66 +3,74 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Escritório Digital · Castles Bay</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <meta name="theme-color" content="#0c0d10" />
+  <title>Castles Bay · Escritório de Comunicação</title>
+  <link rel="stylesheet" href="fonts.css" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <div id="app">
-    <!-- Sidebar -->
-    <aside class="sidebar">
-      <div class="brand">
-        <div class="brand-mark">CB</div>
-        <div class="brand-text">
-          <strong>Escritório Digital</strong>
-          <span>Castles Bay</span>
+    <!-- Rail -->
+    <aside class="rail">
+      <div class="wordmark">
+        <div class="wordmark-mark">CB</div>
+        <div class="wordmark-text">
+          <strong>Castles Bay</strong>
+          <span>Escritório de Comunicação</span>
         </div>
       </div>
 
-      <nav class="nav">
+      <nav class="nav" id="nav">
         <button class="nav-item" data-view="calendar">
-          <span class="nav-ico">📅</span> Calendário
+          <span class="nav-ico" aria-hidden="true">▦</span>
+          <span>Calendário</span>
         </button>
         <button class="nav-item" data-view="ideas">
-          <span class="nav-ico">💡</span> Ideias
+          <span class="nav-ico" aria-hidden="true">✦</span>
+          <span>Ideias</span>
         </button>
         <button class="nav-item" data-view="tasks">
-          <span class="nav-ico">✅</span> Tarefas
+          <span class="nav-ico" aria-hidden="true">▸</span>
+          <span>Tarefas</span>
         </button>
       </nav>
 
-      <div class="cat-panel">
-        <div class="cat-panel-head">
+      <div class="rail-section">
+        <div class="rail-section-head">
           <span>Categorias</span>
-          <button id="add-category-btn" class="icon-btn" title="Nova categoria">＋</button>
+          <button id="add-category-btn" class="icon-btn" title="Nova categoria" aria-label="Nova categoria">＋</button>
         </div>
         <ul id="category-list" class="category-list"></ul>
       </div>
 
-      <button id="sync-btn" class="sync-status" title="Sincronização">
-        <span class="sync-dot"></span>
-        <span id="sync-label">Só neste dispositivo</span>
-      </button>
-
-      <footer class="sidebar-foot">
-        <button id="export-btn" class="ghost-btn" title="Guardar cópia de segurança">⬇ Exportar</button>
-        <button id="import-btn" class="ghost-btn" title="Restaurar cópia de segurança">⬆ Importar</button>
-        <input type="file" id="import-file" accept="application/json" hidden />
-      </footer>
+      <div class="rail-foot">
+        <button id="sync-btn" class="sync-status" title="Sincronização">
+          <span class="sync-dot" aria-hidden="true"></span>
+          <span id="sync-label">Só neste dispositivo</span>
+        </button>
+        <div class="rail-tools">
+          <button id="export-btn" class="ghost-btn" title="Guardar cópia de segurança">Exportar</button>
+          <button id="import-btn" class="ghost-btn" title="Restaurar cópia de segurança">Importar</button>
+          <input type="file" id="import-file" accept="application/json" hidden />
+        </div>
+      </div>
     </aside>
 
     <!-- Main -->
     <main class="main">
       <header class="topbar">
-        <h1 id="view-title">Calendário</h1>
+        <div class="topbar-title">
+          <span class="eyebrow" id="view-eyebrow">Planeamento</span>
+          <h1 id="view-title">Calendário</h1>
+        </div>
         <div class="topbar-actions">
           <label class="filter">
-            <span>Categoria</span>
-            <select id="category-filter">
+            <span class="filter-label">Categoria</span>
+            <select id="category-filter" aria-label="Filtrar por categoria">
               <option value="all">Todas</option>
             </select>
           </label>
-          <button id="primary-action" class="primary-btn">＋ Novo</button>
+          <button id="primary-action" class="primary-btn">Novo post</button>
         </div>
       </header>
 
@@ -70,9 +78,9 @@
     </main>
   </div>
 
-  <!-- Modal generic -->
+  <!-- Modal -->
   <div id="modal-backdrop" class="modal-backdrop" hidden>
-    <div class="modal" role="dialog" aria-modal="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
       <div class="modal-head">
         <h2 id="modal-title">Título</h2>
         <button id="modal-close" class="icon-btn" aria-label="Fechar">✕</button>
@@ -81,14 +89,18 @@
     </div>
   </div>
 
+  <!-- Lightbox -->
+  <div id="lightbox" class="lightbox" hidden>
+    <img id="lightbox-img" alt="Imagem do post" />
+  </div>
+
   <div id="toast" class="toast" hidden></div>
 
-  <!-- Firebase SDK (compat) — usado para sincronização entre dispositivos.
-       Se não houver rede ou configuração, a app funciona só neste dispositivo. -->
+  <!-- Firebase SDK (compat) — sincronização entre dispositivos.
+       Sem rede/config, a app funciona só neste dispositivo. -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-  <!-- Configuração opcional: se preencheres config.js, sincroniza sem colar nada em cada dispositivo. -->
   <script src="config.js" onerror="void 0"></script>
 
   <script src="app.js"></script>
