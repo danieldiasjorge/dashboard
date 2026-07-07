@@ -10,7 +10,10 @@ Corre no browser, sincroniza entre dispositivos e funciona offline como reserva.
   (*Planeado* / *Publicado*). Clica num dia para adicionar; clica num post para
   editar. O calendário mostra a cor da categoria e um contador de imagens (`⧉`).
 - **Ideias** — mural para apontar ideias de posts, campanhas e ângulos.
-- **Tarefas** — lista com checkbox, separada entre "a fazer" e "concluídas".
+- **Tarefas** — quadro **Kanban** (A fazer / Em curso / Concluído) com
+  **prioridade** (alta/média/baixa) e **prazo** (atrasadas e "hoje" em
+  destaque). Arrasta os cartões entre colunas ou marca-os concluídos num
+  clique; ordenam-se por prioridade e prazo.
 
 ## Interação
 

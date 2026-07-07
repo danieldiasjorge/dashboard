@@ -20,6 +20,8 @@
   const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
     'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
   const DIAS_SEMANA = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+  const PRIO_LABEL = { alta: 'Alta', media: 'Média', baixa: 'Baixa' };
+  const STATUS_LABEL = { todo: 'A fazer', doing: 'Em curso', done: 'Concluído' };
 
   const defaultState = () => ({
     categories: [
@@ -49,6 +51,11 @@
     s.ideas = Array.isArray(s.ideas) ? s.ideas : [];
     s.tasks = Array.isArray(s.tasks) ? s.tasks : [];
     s.posts.forEach(p => { if (!Array.isArray(p.images)) p.images = []; });
+    s.tasks.forEach(t => {
+      if (!t.status) t.status = t.done ? 'done' : 'todo';
+      if (t.priority === undefined) t.priority = '';
+      if (t.due === undefined) t.due = '';
+    });
     return s;
   }
 
@@ -81,6 +88,21 @@
     if (!iso) return '';
     const [y, m, d] = iso.split('-').map(Number);
     return `${d} ${MESES[m - 1].slice(0, 3)} ${y}`;
+  }
+  function formatDueShort(iso) {
+    const [y, m, d] = iso.split('-').map(Number);
+    const base = `${d} ${MESES[m - 1].slice(0, 3)}`;
+    return y === new Date().getFullYear() ? base : `${base} ${y}`;
+  }
+  function dueBadge(due, status) {
+    if (!due) return '';
+    let cls = 'due', label = formatDueShort(due);
+    if (status !== 'done') {
+      const t = todayISO();
+      if (due < t) { cls = 'due overdue'; label = 'Atrasada'; }
+      else if (due === t) { cls = 'due today'; label = 'Hoje'; }
+    }
+    return `<span class="${cls}">${label}</span>`;
   }
 
   function toast(msg, opts = {}) {
@@ -327,38 +349,58 @@
     }).join('') + `</div>`;
   }
 
-  // ---- Tarefas
+  // ---- Tarefas (quadro Kanban: A fazer / Em curso / Concluído)
   function renderTasks(container, animate) {
     const items = state.tasks.filter(visible);
     if (!items.length) {
       container.innerHTML = searchQuery
         ? emptyState('▸', 'Sem resultados', 'Nenhuma tarefa corresponde à tua pesquisa.')
         : emptyState('▸', 'Nada por fazer',
-          'Cria tarefas para manteres a comunicação a andar — do briefing à publicação.', 'Nova tarefa');
+          'Cria tarefas e arrasta-as entre colunas conforme avançam — do briefing à publicação.', 'Nova tarefa');
       return;
     }
-    const pending = items.filter(t => !t.done).sort((a, b) => b.createdAt - a.createdAt);
-    const done = items.filter(t => t.done).sort((a, b) => b.createdAt - a.createdAt);
+    const rank = { alta: 0, media: 1, baixa: 2, '': 3 };
+    const inCol = key => items
+      .filter(t => (t.status || 'todo') === key)
+      .sort((a, b) => {
+        const pr = rank[a.priority || ''] - rank[b.priority || ''];
+        if (pr) return pr;
+        const ad = a.due || '9999-99', bd = b.due || '9999-99';
+        if (ad !== bd) return ad < bd ? -1 : 1;
+        return b.createdAt - a.createdAt;
+      });
+
     let i = 0;
-    const row = t => {
+    const card = t => {
       const cat = categoryById(t.categoryId);
-      const anim = animate ? ` rise" style="animation-delay:${Math.min(i++, 16) * 22}ms` : '';
-      return `<div class="task ${t.done ? 'done' : ''}${anim}">
-        <input type="checkbox" class="task-check" data-toggle-task="${t.id}" ${t.done ? 'checked' : ''} aria-label="Concluir tarefa">
-        <div class="task-main" data-task="${t.id}">
-          <div class="task-title">${esc(t.title)}</div>
-          ${t.notes ? `<div class="task-notes">${esc(t.notes)}</div>` : ''}
-          ${cat ? `<div class="task-meta">${catChip(t.categoryId)}</div>` : ''}
+      const pr = t.priority || 'none';
+      const done = (t.status || 'todo') === 'done';
+      const anim = animate ? ` rise" style="animation-delay:${Math.min(i++, 20) * 20}ms` : '';
+      const meta = [
+        t.priority ? `<span class="pr-flag pr-${t.priority}">${PRIO_LABEL[t.priority]}</span>` : '',
+        dueBadge(t.due, t.status || 'todo'),
+        cat ? catChip(t.categoryId) : ''
+      ].filter(Boolean).join('');
+      return `<div class="tcard pr-${pr}${anim}" draggable="true" data-task="${t.id}">
+        <button class="tcard-check ${done ? 'checked' : ''}" data-complete="${t.id}" title="${done ? 'Reabrir' : 'Concluir'}" aria-label="${done ? 'Reabrir' : 'Concluir'}"></button>
+        <div class="tcard-body">
+          <div class="tcard-text">${esc(t.title)}</div>
+          ${t.notes ? `<div class="tcard-notes">${esc(t.notes)}</div>` : ''}
+          ${meta ? `<div class="tcard-meta">${meta}</div>` : ''}
         </div>
-        <button class="icon-btn task-del" data-del-task="${t.id}" title="Eliminar">🗑</button>
+        <button class="icon-btn tcard-del" data-del-task="${t.id}" title="Eliminar">🗑</button>
       </div>`;
     };
-    container.innerHTML = `<div class="task-list">
-      ${pending.length ? `<div class="task-section-label">A fazer · ${pending.length}</div>` : ''}
-      ${pending.map(row).join('')}
-      ${done.length ? `<div class="task-section-label">Concluídas · ${done.length}</div>` : ''}
-      ${done.map(row).join('')}
-    </div>`;
+
+    container.innerHTML = `<div class="kanban">` + ['todo', 'doing', 'done'].map(key => {
+      const list = inCol(key);
+      return `<div class="kanban-col" data-col="${key}">
+        <div class="kanban-head"><span>${STATUS_LABEL[key]}</span><span class="kanban-count">${list.length}</span></div>
+        <div class="kanban-list" data-status="${key}">
+          ${list.map(card).join('') || `<div class="kanban-empty">Arrasta para aqui</div>`}
+        </div>
+      </div>`;
+    }).join('') + `</div>`;
   }
 
   function emptyState(glyph, title, sub, ctaLabel) {
@@ -607,9 +649,25 @@
   // ---- Tarefa
   function openTaskModal(taskId) {
     const editing = taskId ? state.tasks.find(t => t.id === taskId) : null;
+    let status = editing ? (editing.status || 'todo') : 'todo';
+    let prio = editing ? (editing.priority || '') : '';
     openModal(editing ? 'Editar tarefa' : 'Nova tarefa', `
       <div class="field"><label>Tarefa</label>
         <input type="text" id="t-title" maxlength="140" placeholder="Ex.: Preparar fotos para a campanha" value="${editing ? esc(editing.title) : ''}"></div>
+      <div class="field" style="display:flex;gap:12px">
+        <div style="flex:1"><label>Prioridade</label>
+          <div class="seg" id="t-prio">
+            ${['alta', 'media', 'baixa'].map(p => `<button type="button" class="seg-btn ${prio === p ? 'active' : ''}" data-prio="${p}">${PRIO_LABEL[p]}</button>`).join('')}
+          </div>
+        </div>
+        <div style="flex:0 0 42%"><label>Prazo</label>
+          <input type="date" id="t-due" value="${editing ? (editing.due || '') : ''}"></div>
+      </div>
+      <div class="field"><label>Estado</label>
+        <div class="seg" id="t-status">
+          ${['todo', 'doing', 'done'].map(k => `<button type="button" class="seg-btn ${status === k ? 'active' : ''}" data-st="${k}">${STATUS_LABEL[k]}</button>`).join('')}
+        </div>
+      </div>
       <div class="field"><label>Categoria</label>
         <select id="t-cat">${categorySelectOptions(editing ? editing.categoryId : (categoryFilter !== 'all' ? categoryFilter : ''))}</select></div>
       <div class="field"><label>Notas</label>
@@ -619,14 +677,26 @@
         <button class="btn-secondary" data-close>Cancelar</button>
         <button class="primary-btn" id="t-save">${editing ? 'Guardar' : 'Adicionar'}</button>
       </div>`, () => {
+      // prioridade: clicar alterna (clicar na ativa remove)
+      modalBody.querySelectorAll('#t-prio .seg-btn').forEach(b => b.addEventListener('click', () => {
+        const was = b.classList.contains('active');
+        modalBody.querySelectorAll('#t-prio .seg-btn').forEach(x => x.classList.remove('active'));
+        if (!was) { b.classList.add('active'); prio = b.dataset.prio; } else prio = '';
+      }));
+      modalBody.querySelectorAll('#t-status .seg-btn').forEach(b => b.addEventListener('click', () => {
+        modalBody.querySelectorAll('#t-status .seg-btn').forEach(x => x.classList.remove('active'));
+        b.classList.add('active'); status = b.dataset.st;
+      }));
       modalBody.querySelector('#t-save').addEventListener('click', () => {
         const title = modalBody.querySelector('#t-title').value.trim();
         if (!title) { toast('Escreve a tarefa.'); return; }
         const categoryId = modalBody.querySelector('#t-cat').value;
         const notes = modalBody.querySelector('#t-notes').value.trim();
-        if (editing) Object.assign(editing, { title, categoryId, notes });
-        else state.tasks.push({ id: uid(), title, categoryId, notes, done: false, createdAt: Date.now() });
-        save(); closeModal(); render(); toast(editing ? 'Tarefa actualizada.' : 'Tarefa criada.');
+        const due = modalBody.querySelector('#t-due').value;
+        const fields = { title, categoryId, notes, priority: prio, due, status, done: status === 'done' };
+        if (editing) Object.assign(editing, fields);
+        else state.tasks.push({ id: uid(), ...fields, createdAt: Date.now() });
+        save(); closeModal(); animateNext = false; render(); toast(editing ? 'Tarefa actualizada.' : 'Tarefa criada.');
       });
     });
   }
@@ -771,8 +841,12 @@
     const delIdea = e.target.closest('[data-del-idea]'); if (delIdea) { deleteWithUndo('ideas', delIdea.dataset.delIdea); return; }
     const ideaCard = e.target.closest('[data-idea]'); if (ideaCard) { openIdeaModal(ideaCard.dataset.idea); return; }
 
-    const toggle = e.target.closest('[data-toggle-task]');
-    if (toggle) { const t = state.tasks.find(x => x.id === toggle.dataset.toggleTask); if (t) { t.done = !t.done; save(); animateNext = false; render(); } return; }
+    const comp = e.target.closest('[data-complete]');
+    if (comp) {
+      const t = state.tasks.find(x => x.id === comp.dataset.complete);
+      if (t) { const done = (t.status || 'todo') === 'done'; t.status = done ? 'todo' : 'done'; t.done = !done; save(); animateNext = false; render(); }
+      return;
+    }
     const delTask = e.target.closest('[data-del-task]'); if (delTask) { deleteWithUndo('tasks', delTask.dataset.delTask); return; }
     const taskMain = e.target.closest('[data-task]'); if (taskMain) { openTaskModal(taskMain.dataset.task); return; }
   });
@@ -843,6 +917,39 @@
     if (post && post.date !== newDate) {
       post.date = newDate; save(); animateNext = false; render();
       toast('Reagendado para ' + formatDatePT(newDate));
+    }
+  });
+
+  // ---- Arrastar tarefas entre colunas do Kanban
+  let dragTaskId = null;
+  vc.addEventListener('dragstart', e => {
+    const c = e.target.closest('.tcard[data-task]'); if (!c) return;
+    dragTaskId = c.dataset.task; c.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    try { e.dataTransfer.setData('text/plain', dragTaskId); } catch {}
+  });
+  vc.addEventListener('dragend', () => {
+    dragTaskId = null;
+    vc.querySelectorAll('.tcard.dragging').forEach(x => x.classList.remove('dragging'));
+    vc.querySelectorAll('.kanban-list.drop-target').forEach(x => x.classList.remove('drop-target'));
+  });
+  vc.addEventListener('dragover', e => {
+    if (!dragTaskId) return;
+    const list = e.target.closest('.kanban-list'); if (!list) return;
+    e.preventDefault(); e.dataTransfer.dropEffect = 'move';
+    if (!list.classList.contains('drop-target')) {
+      vc.querySelectorAll('.kanban-list.drop-target').forEach(x => x.classList.remove('drop-target'));
+      list.classList.add('drop-target');
+    }
+  });
+  vc.addEventListener('drop', e => {
+    if (!dragTaskId) return;
+    const list = e.target.closest('.kanban-list'); if (!list) return;
+    e.preventDefault();
+    const t = state.tasks.find(x => x.id === dragTaskId); const st = list.dataset.status; dragTaskId = null;
+    if (t && (t.status || 'todo') !== st) {
+      t.status = st; t.done = st === 'done'; save(); animateNext = false; render();
+      toast('Movida para ' + STATUS_LABEL[st]);
     }
   });
 
