@@ -291,8 +291,8 @@
       { n: publishedMonth.length, label: 'Publicados', sub: 'este mês' },
       { n: pendingTasks.length, label: 'Tarefas', sub: 'por fazer' }
     ];
-    const kpiRow = `<div class="kpi-row">` + kpis.map(k =>
-      `<div class="kpi"><div class="kpi-num">${k.n}</div><div class="kpi-label">${k.label}</div><div class="kpi-sub">${k.sub}</div></div>`).join('') + `</div>`;
+    const kpiRow = `<div class="kpi-row">` + kpis.map((k, i) =>
+      `<div class="kpi glow rise" style="animation-delay:${i * 70}ms"><div class="kpi-num" data-count="${k.n}">0</div><div class="kpi-label">${k.label}</div><div class="kpi-sub">${k.sub}</div></div>`).join('') + `</div>`;
 
     // agenda dos próximos 7 dias
     const byDate = {};
@@ -338,7 +338,7 @@
       ? counts.sort((a, b) => b.n - a.n).map(({ cat, n }) =>
         `<div class="dist-row"><span class="cat-dot" style="background:${cat.color}"></span>
           <span class="dist-name">${esc(cat.name)}</span>
-          <span class="dist-bar"><span style="width:${(n / max) * 100}%;background:${cat.color}"></span></span>
+          <span class="dist-bar"><span data-w="${(n / max) * 100}%" style="width:0;background:${cat.color}"></span></span>
           <span class="dist-n">${n}</span></div>`).join('')
       : `<div class="dash-empty">Sem categorias.</div>`;
 
@@ -347,22 +347,45 @@
         <div class="dash-greet">${DIAS_FULL[now.getDay()]}, ${now.getDate()} de ${MESES[now.getMonth()]}</div>
         ${kpiRow}
         <div class="dash-grid">
-          <div class="panel">
+          <div class="panel glow rise" style="animation-delay:300ms">
             <div class="panel-head">Próximos 7 dias</div>
             <div class="panel-body agenda">${agenda}</div>
           </div>
           <div class="dash-side">
-            <div class="panel">
+            <div class="panel glow rise" style="animation-delay:360ms">
               <div class="panel-head ${totalOver ? 'attn' : ''}">Precisa de atenção${totalOver ? ` <span class="panel-badge">${totalOver}</span>` : ''}</div>
               <div class="panel-body">${attention}</div>
             </div>
-            <div class="panel">
+            <div class="panel glow rise" style="animation-delay:420ms">
               <div class="panel-head">Por categoria</div>
               <div class="panel-body">${dist}</div>
             </div>
           </div>
         </div>
       </div>`;
+    requestAnimationFrame(() => { animateCounts(container); animateBars(container); });
+  }
+
+  function reducedMotion() { return window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches; }
+  function animateCounts(scope) {
+    scope.querySelectorAll('[data-count]').forEach(el => {
+      const to = +el.dataset.count || 0;
+      if (reducedMotion() || to === 0) { el.textContent = to; return; }
+      const dur = 950, start = performance.now();
+      const tick = now => {
+        const p = Math.min(1, (now - start) / dur);
+        el.textContent = Math.round(to * (1 - Math.pow(1 - p, 3)));
+        if (p < 1) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+  }
+  function animateBars(scope) {
+    scope.querySelectorAll('.dist-bar > span').forEach(s => {
+      const w = s.dataset.w || '0%';
+      if (reducedMotion()) { s.style.width = w; return; }
+      requestAnimationFrame(() => { s.style.width = w; });
+    });
   }
 
   // notas do dia (inclui as anuais, que repetem no mesmo mês/dia todos os anos)
@@ -491,7 +514,7 @@
       const color = cat ? cat.color : '#8a8377';
       const excerpt = (p.notes || '').trim();
       const media = (p.images && p.images.length) ? `<span class="cal-post-media">⧉ ${p.images.length}</span>` : '';
-      return `<div class="day-post" data-post="${p.id}">
+      return `<div class="day-post glow" data-post="${p.id}">
         <span class="day-post-bar" style="background:${color}"></span>
         <div class="day-post-main">
           <div class="day-post-title">${esc(postLabel(p))}</div>
@@ -523,7 +546,7 @@
       const cat = categoryById(it.categoryId);
       const accent = cat ? cat.color : 'var(--line)';
       const anim = animate ? ` rise" style="animation-delay:${Math.min(i, 14) * 26}ms` : '';
-      return `<div class="card${anim}" data-idea="${it.id}">
+      return `<div class="card glow${anim}" data-idea="${it.id}">
         <div class="card-accent" style="background:${esc(accent)}"></div>
         <button class="icon-btn card-del" data-del-idea="${it.id}" title="Eliminar">🗑</button>
         <div class="card-inner">
@@ -566,7 +589,7 @@
         dueBadge(t.due, t.status || 'todo'),
         cat ? catChip(t.categoryId) : ''
       ].filter(Boolean).join('');
-      return `<div class="tcard pr-${pr}${anim}" draggable="true" data-task="${t.id}">
+      return `<div class="tcard glow pr-${pr}${anim}" draggable="true" data-task="${t.id}">
         <button class="tcard-check ${done ? 'checked' : ''}" data-complete="${t.id}" title="${done ? 'Reabrir' : 'Concluir'}" aria-label="${done ? 'Reabrir' : 'Concluir'}"></button>
         <div class="tcard-body">
           <div class="tcard-text">${esc(t.title)}</div>
@@ -1039,6 +1062,14 @@
     const trigger = e.target.closest('[data-monthpicker]');
     if (trigger && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openMonthPicker(trigger); }
   });
+
+  // spotlight que segue o cursor nos cartões (.glow)
+  document.addEventListener('pointermove', e => {
+    const el = e.target.closest('.glow'); if (!el) return;
+    const r = el.getBoundingClientRect();
+    el.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+    el.style.setProperty('--my', (e.clientY - r.top) + 'px');
+  }, { passive: true });
   document.getElementById('add-category-btn').addEventListener('click', () => openCategoryModal(null));
 
   document.getElementById('category-list').addEventListener('click', e => {
