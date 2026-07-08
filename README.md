@@ -3,7 +3,12 @@
 Um posto de comando para gerir a comunicação das marcas da Castles Bay.
 Corre no browser, sincroniza entre dispositivos e funciona offline como reserva.
 
-## Os três espaços
+## Os espaços
+
+- **Painel** — a vista de abertura: indicadores (próximos 7 dias, por publicar,
+  publicados este mês, tarefas), o que **precisa de atenção** (posts e tarefas
+  atrasados), a agenda dos próximos 7 dias e a distribuição por categoria.
+
 
 - **Calendário** — vistas de **Mês / Semana / Dia**. Cada post tem
   **descrição/legenda**, **várias imagens**, data, categoria e estado

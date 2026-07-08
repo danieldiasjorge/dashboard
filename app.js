@@ -34,7 +34,7 @@
   });
 
   let state = loadState();
-  let currentView = localStorage.getItem('castlesbay-view') || 'calendar';
+  let currentView = localStorage.getItem('castlesbay-view') || 'dashboard';
   let categoryFilter = 'all';
   let searchQuery = '';
   let calRef = new Date();
@@ -188,9 +188,9 @@
   }
 
   // ============================================================ RENDER
-  const EYEBROWS = { calendar: 'Planeamento', ideas: 'Captura', tasks: 'Execução' };
-  const TITLES = { calendar: 'Calendário', ideas: 'Ideias', tasks: 'Tarefas' };
-  const ACTIONS = { calendar: 'Novo post', ideas: 'Nova ideia', tasks: 'Nova tarefa' };
+  const EYEBROWS = { dashboard: 'Visão geral', calendar: 'Planeamento', ideas: 'Captura', tasks: 'Execução' };
+  const TITLES = { dashboard: 'Painel', calendar: 'Calendário', ideas: 'Ideias', tasks: 'Tarefas' };
+  const ACTIONS = { dashboard: 'Novo post', calendar: 'Novo post', ideas: 'Nova ideia', tasks: 'Nova tarefa' };
 
   function render() {
     const animate = animateNext;
@@ -202,8 +202,13 @@
     document.getElementById('view-title').textContent = TITLES[currentView];
     document.getElementById('primary-action').textContent = ACTIONS[currentView];
 
+    const isDash = currentView === 'dashboard';
+    document.querySelector('.search').style.display = isDash ? 'none' : '';
+    document.querySelector('.filter').style.display = isDash ? 'none' : '';
+
     const c = document.getElementById('view-container');
-    if (currentView === 'calendar') renderCalendar(c, animate);
+    if (isDash) renderDashboard(c, animate);
+    else if (currentView === 'calendar') renderCalendar(c, animate);
     else if (currentView === 'ideas') renderIdeas(c, animate);
     else renderTasks(c, animate);
 
@@ -259,6 +264,105 @@
     const cat = categoryById(p.categoryId);
     if (cat) return cat.name;
     return (p.images && p.images.length) ? 'Imagem' : 'Post';
+  }
+
+  // ---- Painel (visão geral)
+  function renderDashboard(container) {
+    const now = new Date();
+    const t = todayISO();
+    const end7d = new Date(now); end7d.setDate(now.getDate() + 6);
+    const end7 = toISO(end7d);
+    const y = now.getFullYear(), m = now.getMonth();
+    const posts = state.posts;
+
+    const upcoming7 = posts.filter(p => p.date >= t && p.date <= end7);
+    const planned = posts.filter(p => p.status === 'planeado' && p.date >= t);
+    const publishedMonth = posts.filter(p => {
+      const [py, pm] = p.date.split('-').map(Number);
+      return p.status === 'publicado' && py === y && pm === m + 1;
+    });
+    const pendingTasks = state.tasks.filter(k => (k.status || 'todo') !== 'done');
+    const overduePosts = posts.filter(p => p.status === 'planeado' && p.date < t).sort((a, b) => a.date < b.date ? -1 : 1);
+    const overdueTasks = state.tasks.filter(k => (k.status || 'todo') !== 'done' && k.due && k.due < t).sort((a, b) => a.due < b.due ? -1 : 1);
+
+    const kpis = [
+      { n: upcoming7.length, label: 'Próximos 7 dias', sub: 'posts agendados' },
+      { n: planned.length, label: 'Por publicar', sub: 'planeados' },
+      { n: publishedMonth.length, label: 'Publicados', sub: 'este mês' },
+      { n: pendingTasks.length, label: 'Tarefas', sub: 'por fazer' }
+    ];
+    const kpiRow = `<div class="kpi-row">` + kpis.map(k =>
+      `<div class="kpi"><div class="kpi-num">${k.n}</div><div class="kpi-label">${k.label}</div><div class="kpi-sub">${k.sub}</div></div>`).join('') + `</div>`;
+
+    // agenda dos próximos 7 dias
+    const byDate = {};
+    upcoming7.forEach(p => { (byDate[p.date] ||= []).push(p); });
+    let agenda = '';
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(now); d.setDate(now.getDate() + i); const iso = toISO(d);
+      const dayPosts = (byDate[iso] || []).sort((a, b) => postLabel(a).localeCompare(postLabel(b)));
+      const dayNotes = notesForDate(iso);
+      if (!dayPosts.length && !dayNotes.length) continue;
+      const rel = i === 0 ? 'Hoje' : i === 1 ? 'Amanhã' : DIAS_FULL[d.getDay()];
+      agenda += `<div class="agenda-day">
+        <div class="agenda-date"><b>${d.getDate()}</b> <span>${MESES[d.getMonth()].slice(0, 3)}</span><small>${rel}</small></div>
+        <div class="agenda-items">
+          ${dayNotes.map(n => `<div class="agenda-note" data-note="${n.id}"><span>⚑</span>${esc(n.text)}</div>`).join('')}
+          ${dayPosts.map(p => {
+            const cat = categoryById(p.categoryId); const color = cat ? cat.color : '#8a8377';
+            return `<div class="agenda-item" data-post="${p.id}"><span class="agenda-bar" style="background:${color}"></span>
+              <span class="agenda-title">${esc(postLabel(p))}</span>
+              ${cat ? `<span class="agenda-cat" style="color:${color}">${esc(cat.name)}</span>` : ''}
+              <span class="chip-status ${p.status}">${p.status === 'publicado' ? 'Publicado' : 'Planeado'}</span></div>`;
+          }).join('')}
+        </div></div>`;
+    }
+    if (!agenda) agenda = `<div class="dash-empty">Nada agendado para os próximos 7 dias.</div>`;
+
+    // precisa de atenção
+    const totalOver = overduePosts.length + overdueTasks.length;
+    let attention;
+    if (!totalOver) attention = `<div class="dash-allgood"><span>✓</span> Tudo em dia. Sem atrasos.</div>`;
+    else {
+      attention = overduePosts.slice(0, 5).map(p =>
+        `<div class="attn-item" data-post="${p.id}"><span class="attn-tag">Post</span><span class="attn-title">${esc(postLabel(p))}</span><span class="attn-date">${formatDueShort(p.date)}</span></div>`).join('')
+        + overdueTasks.slice(0, 5).map(k =>
+          `<div class="attn-item" data-task="${k.id}"><span class="attn-tag">Tarefa</span><span class="attn-title">${esc(k.title)}</span><span class="attn-date">${formatDueShort(k.due)}</span></div>`).join('');
+      if (totalOver > 10) attention += `<div class="dash-more">+${totalOver - 10} mais</div>`;
+    }
+
+    // distribuição por categoria
+    const counts = state.categories.map(c => ({ cat: c, n: posts.filter(p => p.categoryId === c.id).length }));
+    const max = Math.max(1, ...counts.map(c => c.n));
+    const dist = counts.length
+      ? counts.sort((a, b) => b.n - a.n).map(({ cat, n }) =>
+        `<div class="dist-row"><span class="cat-dot" style="background:${cat.color}"></span>
+          <span class="dist-name">${esc(cat.name)}</span>
+          <span class="dist-bar"><span style="width:${(n / max) * 100}%;background:${cat.color}"></span></span>
+          <span class="dist-n">${n}</span></div>`).join('')
+      : `<div class="dash-empty">Sem categorias.</div>`;
+
+    container.innerHTML = `
+      <div class="dash">
+        <div class="dash-greet">${DIAS_FULL[now.getDay()]}, ${now.getDate()} de ${MESES[now.getMonth()]}</div>
+        ${kpiRow}
+        <div class="dash-grid">
+          <div class="panel">
+            <div class="panel-head">Próximos 7 dias</div>
+            <div class="panel-body agenda">${agenda}</div>
+          </div>
+          <div class="dash-side">
+            <div class="panel">
+              <div class="panel-head ${totalOver ? 'attn' : ''}">Precisa de atenção${totalOver ? ` <span class="panel-badge">${totalOver}</span>` : ''}</div>
+              <div class="panel-body">${attention}</div>
+            </div>
+            <div class="panel">
+              <div class="panel-head">Por categoria</div>
+              <div class="panel-body">${dist}</div>
+            </div>
+          </div>
+        </div>
+      </div>`;
   }
 
   // notas do dia (inclui as anuais, que repetem no mesmo mês/dia todos os anos)
@@ -848,9 +952,9 @@
     calDir = null; animateNext = true; render();
   }
   function primaryAction() {
-    if (currentView === 'calendar') openPostModal(null, null);
-    else if (currentView === 'ideas') openIdeaModal(null);
-    else openTaskModal(null);
+    if (currentView === 'ideas') openIdeaModal(null);
+    else if (currentView === 'tasks') openTaskModal(null);
+    else openPostModal(null, null);
   }
 
   // ---- Seletor rápido de mês / ano
