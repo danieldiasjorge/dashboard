@@ -5,10 +5,13 @@ Corre no browser, sincroniza entre dispositivos e funciona offline como reserva.
 
 ## Os três espaços
 
-- **Calendário** — planeia os posts num calendário mensal. Cada post tem
-  título, **descrição/legenda**, **várias imagens**, data, categoria e estado
+- **Calendário** — vistas de **Mês / Semana / Dia**. Cada post tem
+  **descrição/legenda**, **várias imagens**, data, categoria e estado
   (*Planeado* / *Publicado*). Clica num dia para adicionar; clica num post para
-  editar. O calendário mostra a cor da categoria e um contador de imagens (`⧉`).
+  editar; arrasta um post para o reagendar. Mostra a cor da categoria e um
+  contador de imagens (`⧉`).
+- **Notas de dia** — marca um dia com uma nota (ex.: "Dia do Pai"), com opção
+  de **repetir todos os anos**. Botão **＋ Nota** no calendário.
 - **Ideias** — mural para apontar ideias de posts, campanhas e ângulos.
 - **Tarefas** — quadro **Kanban** (A fazer / Em curso / Concluído) com
   **prioridade** (alta/média/baixa) e **prazo** (atrasadas e "hoje" em

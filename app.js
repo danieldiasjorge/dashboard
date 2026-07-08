@@ -20,6 +20,7 @@
   const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
     'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
   const DIAS_SEMANA = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+  const DIAS_FULL = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']; // indexado por getDay()
   const PRIO_LABEL = { alta: 'Alta', media: 'Média', baixa: 'Baixa' };
   const STATUS_LABEL = { todo: 'A fazer', doing: 'Em curso', done: 'Concluído' };
 
@@ -29,7 +30,7 @@
       { id: uid(), name: 'Campanha', color: '#ff4d2d' },
       { id: uid(), name: 'Newsletter', color: '#38bdf8' }
     ],
-    posts: [], ideas: [], tasks: []
+    posts: [], ideas: [], tasks: [], notes: []
   });
 
   let state = loadState();
@@ -37,6 +38,7 @@
   let categoryFilter = 'all';
   let searchQuery = '';
   let calRef = new Date();
+  let calView = localStorage.getItem('castlesbay-calview') || 'month'; // month | week | day
   let animateNext = true;   // anima a próxima render (ao navegar)
   let calDir = null;        // 'next' | 'prev' — direção do deslize do mês
   let dragPostId = null;    // post a ser arrastado no calendário
@@ -50,6 +52,7 @@
     s.posts = Array.isArray(s.posts) ? s.posts : [];
     s.ideas = Array.isArray(s.ideas) ? s.ideas : [];
     s.tasks = Array.isArray(s.tasks) ? s.tasks : [];
+    s.notes = Array.isArray(s.notes) ? s.notes : [];
     s.posts.forEach(p => { if (!Array.isArray(p.images)) p.images = []; });
     s.tasks.forEach(t => {
       if (!t.status) t.status = t.done ? 'done' : 'todo';
@@ -258,70 +261,148 @@
     return (p.images && p.images.length) ? 'Imagem' : 'Post';
   }
 
-  // ---- Calendário
+  // notas do dia (inclui as anuais, que repetem no mesmo mês/dia todos os anos)
+  function notesForDate(iso) {
+    const md = iso.slice(5);
+    return state.notes.filter(n => n.date === iso || (n.annual && (n.date || '').slice(5) === md));
+  }
+  function postPill(p) {
+    const cat = categoryById(p.categoryId);
+    const color = cat ? cat.color : '#8a8377';
+    const media = (p.images && p.images.length) ? `<span class="cal-post-media">⧉${p.images.length}</span>` : '';
+    const label = postLabel(p);
+    return `<div class="cal-post ${p.status === 'publicado' ? 'published' : ''}" draggable="true"
+      style="background:${hexA(color, .15)};color:${color};border-left-color:${color}"
+      data-post="${p.id}" title="${esc(label)} — arrasta para reagendar">
+      <span class="cal-post-title">${esc(label)}</span>${media}</div>`;
+  }
+  function noteChip(n) {
+    return `<div class="cal-note" data-note="${n.id}" title="Nota: ${esc(n.text)}${n.annual ? ' (todos os anos)' : ''}">
+      <span class="cal-note-ico" aria-hidden="true">⚑</span><span class="cal-note-text">${esc(n.text)}</span></div>`;
+  }
+
+  // período visível conforme a vista, para o resumo e navegação
+  function calPeriod() {
+    const y = calRef.getFullYear(), m = calRef.getMonth();
+    if (calView === 'month') return { start: new Date(y, m, 1), end: new Date(y, m + 1, 0) };
+    if (calView === 'week') {
+      const s = new Date(calRef); s.setDate(s.getDate() - ((s.getDay() + 6) % 7));
+      const e = new Date(s); e.setDate(s.getDate() + 6);
+      return { start: s, end: e };
+    }
+    return { start: new Date(calRef), end: new Date(calRef) };
+  }
+
+  // ---- Calendário (Mês / Semana / Dia)
   function renderCalendar(container) {
-    const year = calRef.getFullYear(), month = calRef.getMonth();
-    const first = new Date(year, month, 1);
-    const startOffset = (first.getDay() + 6) % 7;
-    const gridStart = new Date(year, month, 1 - startOffset);
+    const postsByDate = {};
+    state.posts.filter(visible).forEach(p => { (postsByDate[p.date] ||= []).push(p); });
+    const cellPosts = iso => (postsByDate[iso] || []).slice().sort((a, b) => postLabel(a).localeCompare(postLabel(b)));
 
-    const monthPosts = state.posts.filter(p => {
-      const [py, pm] = p.date.split('-').map(Number);
-      return py === year && pm === month + 1 && visible(p);
-    });
-    const publishedCount = monthPosts.filter(p => p.status === 'publicado').length;
+    const per = calPeriod();
+    const startISO = toISO(per.start), endISO = toISO(per.end);
+    const periodPosts = state.posts.filter(p => visible(p) && p.date >= startISO && p.date <= endISO);
+    const pub = periodPosts.filter(p => p.status === 'publicado').length;
+    const scopeWord = calView === 'month' ? 'este mês' : calView === 'week' ? 'esta semana' : 'neste dia';
+    const summary = periodPosts.length
+      ? `<b>${periodPosts.length}</b> ${periodPosts.length === 1 ? 'post' : 'posts'}
+         <span class="dot-sep">·</span> <b>${pub}</b> ${pub === 1 ? 'publicado' : 'publicados'}
+         <span class="dot-sep">·</span> <b>${periodPosts.length - pub}</b> por publicar`
+      : (searchQuery || categoryFilter !== 'all' ? 'Nada corresponde ao filtro' : `Sem posts ${scopeWord} — clica num dia para começar`);
 
-    const byDate = {};
-    state.posts.filter(visible).forEach(p => { (byDate[p.date] ||= []).push(p); });
-
-    let cells = '';
-    for (let i = 0; i < 42; i++) {
-      const d = new Date(gridStart); d.setDate(gridStart.getDate() + i);
-      const iso = toISO(d);
-      const outside = d.getMonth() !== month;
-      const isToday = iso === todayISO();
-      const dayPosts = (byDate[iso] || []).sort((a, b) => postLabel(a).localeCompare(postLabel(b)));
-
-      const pills = dayPosts.map(p => {
-        const cat = categoryById(p.categoryId);
-        const color = cat ? cat.color : '#8a8377';
-        const media = (p.images && p.images.length) ? `<span class="cal-post-media">⧉${p.images.length}</span>` : '';
-        const label = postLabel(p);
-        return `<div class="cal-post ${p.status === 'publicado' ? 'published' : ''}" draggable="true"
-          style="background:${hexA(color, .15)};color:${color};border-left-color:${color}"
-          data-post="${p.id}" title="${esc(label)} — arrasta para reagendar">
-          <span class="cal-post-title">${esc(label)}</span>${media}</div>`;
-      }).join('');
-
-      cells += `<div class="cal-cell ${outside ? 'outside' : ''} ${isToday ? 'today' : ''}" data-day="${iso}">
-        <span class="cal-daynum">${d.getDate()}</span>
-        <span class="cal-add">＋</span>
-        <div class="cal-posts">${pills}</div></div>`;
+    // título conforme a vista
+    let title;
+    if (calView === 'month') {
+      title = `${MESES[calRef.getMonth()]} <span class="cal-year">${calRef.getFullYear()}</span>`;
+    } else if (calView === 'week') {
+      const s = per.start, e = per.end;
+      const sameMonth = s.getMonth() === e.getMonth();
+      title = sameMonth
+        ? `${s.getDate()}–${e.getDate()} ${MESES[s.getMonth()].slice(0, 3)} <span class="cal-year">${e.getFullYear()}</span>`
+        : `${s.getDate()} ${MESES[s.getMonth()].slice(0, 3)} – ${e.getDate()} ${MESES[e.getMonth()].slice(0, 3)} <span class="cal-year">${e.getFullYear()}</span>`;
+    } else {
+      title = `${DIAS_FULL[calRef.getDay()]}, ${calRef.getDate()} ${MESES[calRef.getMonth()]} <span class="cal-year">${calRef.getFullYear()}</span>`;
     }
 
-    const summary = monthPosts.length
-      ? `<b>${monthPosts.length}</b> ${monthPosts.length === 1 ? 'post' : 'posts'}
-         <span class="dot-sep">·</span> <b>${publishedCount}</b> ${publishedCount === 1 ? 'publicado' : 'publicados'}
-         <span class="dot-sep">·</span> <b>${monthPosts.length - publishedCount}</b> por publicar`
-      : (searchQuery || categoryFilter !== 'all' ? 'Nada corresponde ao filtro' : 'Sem posts este mês — clica num dia para começar');
+    // corpo conforme a vista
+    let body;
+    if (calView === 'day') body = dayBody(cellPosts);
+    else body = gridBody(cellPosts); // mês e semana partilham a grelha de 7 colunas
 
     const dir = calDir; calDir = null;
+    const seg = ['month', 'week', 'day'].map(v =>
+      `<button class="seg-btn ${calView === v ? 'active' : ''}" data-calview="${v}">${{ month: 'Mês', week: 'Semana', day: 'Dia' }[v]}</button>`).join('');
+
     container.innerHTML = `
       <div class="cal-toolbar">
         <div>
-          <div class="cal-month" data-monthpicker tabindex="0" role="button" aria-label="Escolher mês e ano" title="Escolher mês e ano">${MESES[month]} <span class="cal-year">${year}</span> <span class="cal-caret" aria-hidden="true">▾</span></div>
+          <div class="cal-month" data-monthpicker tabindex="0" role="button" aria-label="Escolher mês e ano" title="Escolher mês e ano">${title} <span class="cal-caret" aria-hidden="true">▾</span></div>
           <div class="cal-summary">${summary}</div>
         </div>
-        <div class="cal-nav">
-          <button data-cal="today" class="cal-today">Hoje</button>
-          <button data-cal="prev" title="Mês anterior (←)" aria-label="Mês anterior">‹</button>
-          <button data-cal="next" title="Mês seguinte (→)" aria-label="Mês seguinte">›</button>
+        <div class="cal-controls">
+          <div class="seg cal-viewswitch">${seg}</div>
+          <button class="cal-note-btn" data-newnote title="Adicionar nota a um dia">＋ Nota</button>
+          <div class="cal-nav">
+            <button data-cal="today" class="cal-today">Hoje</button>
+            <button data-cal="prev" aria-label="Anterior">‹</button>
+            <button data-cal="next" aria-label="Seguinte">›</button>
+          </div>
         </div>
       </div>
-      <div class="calendar ${dir ? 'slide-' + dir : ''}">
-        <div class="cal-weekdays">${DIAS_SEMANA.map(d => `<div>${d}</div>`).join('')}</div>
-        <div class="cal-grid">${cells}</div>
-      </div>`;
+      <div class="calendar calview-${calView} ${dir ? 'slide-' + dir : ''}">${body}</div>`;
+  }
+
+  function gridBody(cellPosts) {
+    let days;
+    if (calView === 'week') {
+      const s = new Date(calRef); s.setDate(s.getDate() - ((s.getDay() + 6) % 7));
+      days = Array.from({ length: 7 }, (_, i) => { const d = new Date(s); d.setDate(s.getDate() + i); return { d, outside: false }; });
+    } else {
+      const y = calRef.getFullYear(), m = calRef.getMonth();
+      const first = new Date(y, m, 1);
+      const gridStart = new Date(y, m, 1 - ((first.getDay() + 6) % 7));
+      days = Array.from({ length: 42 }, (_, i) => { const d = new Date(gridStart); d.setDate(gridStart.getDate() + i); return { d, outside: d.getMonth() !== m }; });
+    }
+    const cells = days.map(({ d, outside }) => {
+      const iso = toISO(d);
+      const isToday = iso === todayISO();
+      const items = notesForDate(iso).map(noteChip).join('') + cellPosts(iso).map(postPill).join('');
+      return `<div class="cal-cell ${outside ? 'outside' : ''} ${isToday ? 'today' : ''}" data-day="${iso}">
+        <span class="cal-daynum">${d.getDate()}</span>
+        <span class="cal-add" title="Novo post">＋</span>
+        <div class="cal-posts">${items}</div></div>`;
+    }).join('');
+    return `<div class="cal-weekdays">${DIAS_SEMANA.map(d => `<div>${d}</div>`).join('')}</div>
+      <div class="cal-grid">${cells}</div>`;
+  }
+
+  function dayBody(cellPosts) {
+    const iso = toISO(calRef);
+    const notes = notesForDate(iso);
+    const posts = cellPosts(iso);
+    const noteEls = notes.map(n =>
+      `<div class="day-note" data-note="${n.id}"><span class="cal-note-ico">⚑</span><span>${esc(n.text)}</span>${n.annual ? '<span class="day-note-annual">todos os anos</span>' : ''}</div>`).join('');
+    const postEls = posts.map(p => {
+      const cat = categoryById(p.categoryId);
+      const color = cat ? cat.color : '#8a8377';
+      const excerpt = (p.notes || '').trim();
+      const media = (p.images && p.images.length) ? `<span class="cal-post-media">⧉ ${p.images.length}</span>` : '';
+      return `<div class="day-post" data-post="${p.id}">
+        <span class="day-post-bar" style="background:${color}"></span>
+        <div class="day-post-main">
+          <div class="day-post-title">${esc(postLabel(p))}</div>
+          ${excerpt ? `<div class="day-post-excerpt">${esc(excerpt)}</div>` : ''}
+          <div class="day-post-meta">
+            ${cat ? catChip(p.categoryId) : ''}
+            <span class="chip-status ${p.status}">${p.status === 'publicado' ? 'Publicado' : 'Planeado'}</span>
+            ${media}
+          </div>
+        </div></div>`;
+    }).join('');
+    return `<div class="day-view" data-day="${iso}">
+      ${noteEls}
+      ${posts.length ? postEls : `<div class="day-empty">Sem posts neste dia. Clica em “Novo post” para adicionar.</div>`}
+    </div>`;
   }
 
   // ---- Ideias
@@ -646,6 +727,41 @@
     });
   }
 
+  // ---- Nota de calendário (ex.: "Dia do Pai")
+  function openNoteModal(noteId, presetDate) {
+    const editing = noteId ? state.notes.find(n => n.id === noteId) : null;
+    let annual = editing ? !!editing.annual : false;
+    openModal(editing ? 'Editar nota' : 'Nova nota', `
+      <div class="field"><label>Nota</label>
+        <input type="text" id="n-text" maxlength="80" placeholder="Ex.: Dia do Pai" value="${editing ? esc(editing.text) : ''}"></div>
+      <div class="field"><label>Dia</label>
+        <input type="date" id="n-date" value="${editing ? editing.date : (presetDate || todayISO())}"></div>
+      <div class="field">
+        <label>Repetição</label>
+        <button type="button" class="toggle ${annual ? 'on' : ''}" id="n-annual" aria-pressed="${annual}">
+          <span class="toggle-knob"></span><span>Repetir todos os anos</span>
+        </button>
+      </div>
+      <div class="modal-actions">
+        ${editing ? `<button class="btn-danger" data-del-note="${editing.id}">Eliminar</button>` : ''}
+        <button class="btn-secondary" data-close>Cancelar</button>
+        <button class="primary-btn" id="n-save">${editing ? 'Guardar' : 'Adicionar'}</button>
+      </div>`, () => {
+      const at = modalBody.querySelector('#n-annual');
+      at.addEventListener('click', () => { annual = !annual; at.classList.toggle('on', annual); at.setAttribute('aria-pressed', annual); });
+      modalBody.querySelector('#n-save').addEventListener('click', () => {
+        const text = modalBody.querySelector('#n-text').value.trim();
+        const date = modalBody.querySelector('#n-date').value;
+        if (!text) { toast('Escreve a nota.'); return; }
+        if (!date) { toast('Escolhe o dia.'); return; }
+        if (editing) Object.assign(editing, { text, date, annual });
+        else state.notes.push({ id: uid(), text, date, annual });
+        save(); closeModal(); animateNext = false; render();
+        toast(editing ? 'Nota actualizada.' : 'Nota adicionada.');
+      });
+    });
+  }
+
   // ---- Tarefa
   function openTaskModal(taskId) {
     const editing = taskId ? state.tasks.find(t => t.id === taskId) : null;
@@ -714,14 +830,22 @@
     calDir = null; animateNext = true; render();
     document.getElementById('view-container').scrollTop = 0;
   }
-  function navMonth(dir) {
-    calDir = dir; calRef.setMonth(calRef.getMonth() + (dir === 'next' ? 1 : -1));
-    calRef = new Date(calRef); animateNext = true; render();
+  function navPeriod(dir) {
+    const delta = dir === 'next' ? 1 : -1;
+    if (calView === 'month') calRef.setMonth(calRef.getMonth() + delta);
+    else if (calView === 'week') calRef.setDate(calRef.getDate() + 7 * delta);
+    else calRef.setDate(calRef.getDate() + delta);
+    calRef = new Date(calRef); calDir = dir; animateNext = true; render();
   }
   function goToday() {
     const now = new Date();
     calDir = (now < calRef) ? 'prev' : 'next';
     calRef = now; animateNext = true; render();
+  }
+  function setCalView(v) {
+    if (v === calView) return;
+    calView = v; localStorage.setItem('castlesbay-calview', v);
+    calDir = null; animateNext = true; render();
   }
   function primaryAction() {
     if (currentView === 'calendar') openPostModal(null, null);
@@ -829,12 +953,15 @@
   document.getElementById('view-container').addEventListener('click', e => {
     const emptyCta = e.target.closest('[data-empty-cta]'); if (emptyCta) { primaryAction(); return; }
     const mpTrigger = e.target.closest('[data-monthpicker]'); if (mpTrigger) { openMonthPicker(mpTrigger); return; }
+    const cvBtn = e.target.closest('[data-calview]'); if (cvBtn) { setCalView(cvBtn.dataset.calview); return; }
+    const newNote = e.target.closest('[data-newnote]'); if (newNote) { openNoteModal(null, calView === 'day' ? toISO(calRef) : todayISO()); return; }
     const calBtn = e.target.closest('[data-cal]');
     if (calBtn) {
       const dir = calBtn.dataset.cal;
-      if (dir === 'today') goToday(); else navMonth(dir);
+      if (dir === 'today') goToday(); else navPeriod(dir);
       return;
     }
+    const noteEl = e.target.closest('[data-note]'); if (noteEl) { openNoteModal(noteEl.dataset.note); return; }
     const postEl = e.target.closest('[data-post]'); if (postEl) { openPostModal(postEl.dataset.post); return; }
     const cell = e.target.closest('[data-day]'); if (cell) { openPostModal(null, cell.dataset.day); return; }
 
@@ -854,7 +981,8 @@
   const DEL_MSG = {
     posts: ['Post eliminado', 'Post reposto'],
     ideas: ['Ideia eliminada', 'Ideia reposta'],
-    tasks: ['Tarefa eliminada', 'Tarefa reposta']
+    tasks: ['Tarefa eliminada', 'Tarefa reposta'],
+    notes: ['Nota eliminada', 'Nota reposta']
   };
   function deleteWithUndo(key, id) {
     const idx = state[key].findIndex(x => x.id === id);
@@ -879,6 +1007,7 @@
     const dp = e.target.closest('[data-del-post]'); if (dp) deleteWithUndo('posts', dp.dataset.delPost);
     const di = e.target.closest('[data-del-idea]'); if (di) deleteWithUndo('ideas', di.dataset.delIdea);
     const dt = e.target.closest('[data-del-task]'); if (dt) deleteWithUndo('tasks', dt.dataset.delTask);
+    const dn = e.target.closest('[data-del-note]'); if (dn) deleteWithUndo('notes', dn.dataset.delNote);
   });
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
@@ -973,8 +1102,8 @@
       case '3': switchView('tasks'); break;
       case 'n': case 'N': e.preventDefault(); primaryAction(); break;
       case '/': e.preventDefault(); searchInput.focus(); break;
-      case 'ArrowLeft': if (currentView === 'calendar') navMonth('prev'); break;
-      case 'ArrowRight': if (currentView === 'calendar') navMonth('next'); break;
+      case 'ArrowLeft': if (currentView === 'calendar') navPeriod('prev'); break;
+      case 'ArrowRight': if (currentView === 'calendar') navPeriod('next'); break;
     }
   });
 
