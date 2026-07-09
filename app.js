@@ -1457,6 +1457,7 @@
   const WATER = {
     canvas: null, ctx: null, w: 0, h: 0, dpr: 1, particles: [], running: false, t: 0,
     surge: null, nextSurge: null, burstAt: 0,
+    pX: 0, pOver: false, pStr: 0, pSpeed: 0, _lx: 0, _ly: 0,
     init() {
       this.canvas = document.getElementById('water-canvas');
       if (!this.canvas) return;
@@ -1464,6 +1465,8 @@
       this.resize();
       window.addEventListener('resize', () => this.resize());
       if (reducedMotion()) { this.frame(0); return; }
+      window.addEventListener('pointermove', e => this.onPointer(e), { passive: true });
+      document.addEventListener('mouseleave', () => { this.pOver = false; });
       this.running = true;
       const loop = now => { if (!this.running) return; this.frame(now * 0.001); requestAnimationFrame(loop); };
       requestAnimationFrame(loop);
@@ -1489,7 +1492,7 @@
     layer(t, base, amp, color) {
       const ctx = this.ctx;
       ctx.beginPath(); ctx.moveTo(0, this.h);
-      for (let x = 0; x <= this.w; x += 5) ctx.lineTo(x, this.line(x, t, amp, base) + this.surgeOffset(x));
+      for (let x = 0; x <= this.w; x += 5) ctx.lineTo(x, this.line(x, t, amp, base) + this.disturb(x));
       ctx.lineTo(this.w, this.h); ctx.closePath();
       ctx.fillStyle = color; ctx.fill();
     },
@@ -1507,12 +1510,35 @@
       const prog = (this.t - s.start) / s.dur;
       return (prog < 0 || prog > 1) ? 0 : Math.sin(Math.PI * prog);
     },
+    onPointer(e) {
+      if (!this.ctx) return;
+      const rect = this.canvas.getBoundingClientRect();
+      const lineY = rect.top + this.h * 0.5;
+      this.pX = e.clientX - rect.left;
+      this.pOver = e.clientY > lineY - 80 && e.clientY < rect.bottom + 30;
+      this.pSpeed = Math.hypot(e.clientX - this._lx, e.clientY - this._ly);
+      this._lx = e.clientX; this._ly = e.clientY;
+    },
+    // elevação local que segue o cursor (a água reage ao rato)
+    pointerOffset(x) {
+      if (this.pStr <= 0.002) return 0;
+      const dx = x - this.pX, sigma = 85;
+      return -this.pStr * 24 * Math.exp(-(dx * dx) / (2 * sigma * sigma));
+    },
+    disturb(x) { return this.surgeOffset(x) + this.pointerOffset(x); },
     frame(t) {
       this.t = t; const ctx = this.ctx; if (!ctx) return;
       ctx.clearRect(0, 0, this.w, this.h);
       const p = this.palette();
       const base = this.h * 0.5;
       const railW = window.innerWidth > 900 ? 280 : 0;
+      // reação ao cursor: a água segue o rato (elevação local) e salpica ao mexer depressa
+      this.pStr += ((this.pOver ? 1 : 0) - this.pStr) * 0.12;
+      if (this.running && this.pOver && this.pSpeed > 7 && Math.random() < 0.35) {
+        const y = this.line(this.pX, t * 1.15 + 4, 5, base) + this.disturb(this.pX);
+        this.particles.push({ x: this.pX + (Math.random() * 10 - 5), y, vx: Math.random() * 2 - 1, vy: -(1.6 + Math.random() * 2.6), r: 0.7 + Math.random() * 1.5, life: 0, max: 38 + Math.random() * 28 });
+        this.pSpeed *= 0.4;
+      }
       // onda grande de ~10 em ~10s: bate na torre e rebenta em espuma
       if (this.running && railW) {
         if (this.nextSurge == null) this.nextSurge = t + 3;
@@ -1540,7 +1566,7 @@
       for (let i = this.particles.length - 1; i >= 0; i--) {
         const d = this.particles[i];
         d.vy += g; d.x += d.vx; d.y += d.vy; d.life++;
-        const ground = this.line(d.x, this.t * 1.15 + 4, 5, base) + this.surgeOffset(d.x);
+        const ground = this.line(d.x, this.t * 1.15 + 4, 5, base) + this.disturb(d.x);
         ctx.globalAlpha = Math.max(0, 1 - d.life / d.max);
         ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2); ctx.fill();
         if ((d.vy > 0 && d.y > ground) || d.life > d.max) this.particles.splice(i, 1);
