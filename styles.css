@@ -90,8 +90,11 @@ button { font-family: inherit; cursor: pointer; color: inherit; }
   backdrop-filter: blur(26px) saturate(1.5); -webkit-backdrop-filter: blur(26px) saturate(1.5);
   border-right: 1px solid var(--line);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.05), inset -1px 0 0 rgba(255,255,255,.02);
-  display: flex; flex-direction: column; padding: 22px 20px 18px; gap: 24px; overflow-y: auto;
+  display: flex; flex-direction: column; padding: 30px 20px 18px; gap: 24px; overflow-y: auto;
   position: relative; z-index: 5;
+  --crenel: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='34' height='18'%3E%3Crect width='19' height='18' fill='%23fff'/%3E%3C/svg%3E") top left / 34px 18px repeat-x,
+            linear-gradient(#fff, #fff) bottom left / 100% calc(100% - 18px) no-repeat;
+  -webkit-mask: var(--crenel); mask: var(--crenel);
 }
 :root[data-theme="light"] .rail {
   background:
@@ -99,17 +102,6 @@ button { font-family: inherit; cursor: pointer; color: inherit; }
     color-mix(in srgb, var(--surface) 62%, transparent);
 }
 
-/* coroa de ameias (topo da torre) */
-.crown { position: relative; height: 15px; margin: 0 -20px 6px; flex: 0 0 auto; }
-.crown::before {
-  content: ""; position: absolute; inset: 0 0 4px 0; background: var(--stone);
-  -webkit-mask: repeating-linear-gradient(90deg, #000 0 16px, transparent 16px 30px);
-  mask: repeating-linear-gradient(90deg, #000 0 16px, transparent 16px 30px);
-}
-.crown::after {
-  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 4px;
-  background: var(--stone); box-shadow: 0 1px 0 rgba(216,180,112,.28);
-}
 .wordmark { display: flex; align-items: center; gap: 14px; }
 .wordmark-mark {
   width: 46px; height: 46px; border-radius: var(--radius-sm); flex: 0 0 auto;
@@ -765,7 +757,7 @@ body::after {
   #app { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
   .rail { flex-direction: row; align-items: center; overflow-x: auto; overflow-y: hidden; padding: 12px 16px; gap: 16px; border-right: none; border-bottom: 1px solid var(--line); }
   .rail-section, .rail-foot { display: none; }
-  .crown { display: none; }
+  .rail { -webkit-mask: none; mask: none; padding: 12px 16px; }
   .nav { flex-direction: row; }
   .nav-item span:not(.nav-ico) { display: none; }
   .nav-item { padding: 12px 15px; }
