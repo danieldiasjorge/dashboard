@@ -1456,6 +1456,7 @@
   // ============================================================ ÁGUA (canvas)
   const WATER = {
     canvas: null, ctx: null, w: 0, h: 0, dpr: 1, particles: [], running: false, t: 0,
+    surge: null, nextSurge: null, burstAt: 0,
     init() {
       this.canvas = document.getElementById('water-canvas');
       if (!this.canvas) return;
@@ -1485,17 +1486,26 @@
     line(x, t, amp, base) {
       return base + amp * (Math.sin(x * 0.010 + t * 1.1) + 0.6 * Math.sin(x * 0.019 - t * 1.7) + 0.9 * Math.sin(x * 0.005 + t * 0.6));
     },
-    layer(t, base, amp, color, foam) {
-      const ctx = this.ctx, pts = [];
+    layer(t, base, amp, color) {
+      const ctx = this.ctx;
       ctx.beginPath(); ctx.moveTo(0, this.h);
-      for (let x = 0; x <= this.w; x += 5) { const y = this.line(x, t, amp, base); pts.push(y); ctx.lineTo(x, y); }
+      for (let x = 0; x <= this.w; x += 5) ctx.lineTo(x, this.line(x, t, amp, base) + this.surgeOffset(x));
       ctx.lineTo(this.w, this.h); ctx.closePath();
       ctx.fillStyle = color; ctx.fill();
-      if (foam) {
-        ctx.beginPath();
-        for (let i = 0; i < pts.length; i++) { const x = i * 5; i ? ctx.lineTo(x, pts[i]) : ctx.moveTo(x, pts[i]); }
-        ctx.strokeStyle = this.palette().foam; ctx.globalAlpha = 0.5; ctx.lineWidth = 2; ctx.stroke(); ctx.globalAlpha = 1;
-      }
+    },
+    // elevação local da água junto à torre durante um surto (sobe e desce)
+    surgeOffset(x) {
+      const s = this.surge; if (!s) return 0;
+      const prog = (this.t - s.start) / s.dur;
+      if (prog < 0 || prog > 1) return 0;
+      const env = Math.sin(Math.PI * prog);
+      const dx = x - s.x, sigma = 130;
+      return -s.amp * env * Math.exp(-(dx * dx) / (2 * sigma * sigma));
+    },
+    surgeEnv() {
+      const s = this.surge; if (!s) return 0;
+      const prog = (this.t - s.start) / s.dur;
+      return (prog < 0 || prog > 1) ? 0 : Math.sin(Math.PI * prog);
     },
     frame(t) {
       this.t = t; const ctx = this.ctx; if (!ctx) return;
@@ -1503,44 +1513,50 @@
       const p = this.palette();
       const base = this.h * 0.5;
       const railW = window.innerWidth > 900 ? 280 : 0;
-      this.layer(t * 0.8, base + 22, 12, p.deep, false);
-      this.layer(t * 1.05 + 2, base + 10, 9, p.mid, false);
-      this.layer(t * 1.3 + 4, base, 7, p.top, true);
-      if (railW && this.running) this.spawn(t, railW, base);
-      this.updateParticles(p, base);
-      if (railW) this.towerFoam(ctx, t, railW, base, p);
-    },
-    spawn(t, railW, base) {
-      const y = this.line(railW, t * 1.3 + 4, 7, base);
-      const crest = base - y;
-      if (Math.random() < 0.05 + Math.max(0, crest) * 0.02) {
-        const n = 3 + Math.floor(Math.random() * 5);
-        for (let i = 0; i < n; i++) this.particles.push({
-          x: railW + Math.random() * 4, y: y - Math.random() * 4,
-          vx: 0.3 + Math.random() * 2.0, vy: -(2.4 + Math.random() * 3.4),
-          r: 0.8 + Math.random() * 2.2, life: 0, max: 45 + Math.random() * 40
-        });
+      // onda grande de ~10 em ~10s: bate na torre e rebenta em espuma
+      if (this.running && railW) {
+        if (this.nextSurge == null) this.nextSurge = t + 3;
+        if (t >= this.nextSurge) { this.surge = { start: t, dur: 1.4, amp: 48, x: railW }; this.burstAt = t + 0.42; this.nextSurge = t + 10; }
+        if (this.burstAt && t >= this.burstAt) { this.spawnBurst(railW, base); this.burstAt = 0; }
+        if (this.surge && t - this.surge.start > this.surge.dur) this.surge = null;
       }
+      this.layer(t * 0.72, base + 20, 8, p.deep);
+      this.layer(t * 0.95 + 2, base + 9, 6, p.mid);
+      this.layer(t * 1.15 + 4, base, 5, p.top);
+      this.updateParticles(p, base);
+      if (railW) this.towerFoam(ctx, railW, base, p);
+    },
+    spawnBurst(railW, base) {
+      const y = this.line(railW, this.t * 1.15 + 4, 5, base) + this.surgeOffset(railW);
+      for (let i = 0; i < 40; i++) this.particles.push({
+        x: railW + (Math.random() * 30 - 6), y: y - Math.random() * 8,
+        vx: Math.random() * 2.9 - 0.5, vy: -(3.6 + Math.random() * 5.4),
+        r: 1 + Math.random() * 2.6, life: 0, max: 55 + Math.random() * 55
+      });
     },
     updateParticles(p, base) {
-      const ctx = this.ctx, g = 0.15;
+      const ctx = this.ctx, g = 0.16;
       ctx.fillStyle = p.foam;
       for (let i = this.particles.length - 1; i >= 0; i--) {
         const d = this.particles[i];
         d.vy += g; d.x += d.vx; d.y += d.vy; d.life++;
-        const ground = this.line(d.x, this.t * 1.3 + 4, 7, base);
+        const ground = this.line(d.x, this.t * 1.15 + 4, 5, base) + this.surgeOffset(d.x);
         ctx.globalAlpha = Math.max(0, 1 - d.life / d.max);
         ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2); ctx.fill();
         if ((d.vy > 0 && d.y > ground) || d.life > d.max) this.particles.splice(i, 1);
       }
       ctx.globalAlpha = 1;
     },
-    towerFoam(ctx, t, railW, base, p) {
-      const y = this.line(railW, t * 1.3 + 4, 7, base);
-      const grd = ctx.createRadialGradient(railW, y, 0, railW, y, 30);
+    towerFoam(ctx, railW, base, p) {
+      const env = this.surgeEnv();
+      const alpha = 0.05 + env * 0.55;
+      if (alpha < 0.02) return;
+      const y = this.line(railW, this.t * 1.15 + 4, 5, base) + this.surgeOffset(railW);
+      const rad = 18 + env * 30;
+      const grd = ctx.createRadialGradient(railW, y, 0, railW, y, rad);
       grd.addColorStop(0, p.foam); grd.addColorStop(1, 'rgba(255,255,255,0)');
-      ctx.globalAlpha = 0.5; ctx.fillStyle = grd;
-      ctx.beginPath(); ctx.ellipse(railW, y, 22, 9, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = alpha; ctx.fillStyle = grd;
+      ctx.beginPath(); ctx.ellipse(railW, y, rad, 8 + env * 10, 0, 0, Math.PI * 2); ctx.fill();
       ctx.globalAlpha = 1;
     }
   };
