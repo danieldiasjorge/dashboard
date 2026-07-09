@@ -198,6 +198,7 @@
     renderCategories();
     renderCategoryFilter();
     document.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.view === currentView));
+    positionNavIndicator();
     document.getElementById('view-eyebrow').textContent = EYEBROWS[currentView];
     document.getElementById('view-title').textContent = TITLES[currentView];
     document.getElementById('primary-action').textContent = ACTIONS[currentView];
@@ -951,11 +952,37 @@
   lightbox.addEventListener('click', () => { lightbox.hidden = true; lightboxImg.src = ''; });
 
   // ============================================================ EVENTOS
+  const VIEW_ORDER = ['dashboard', 'calendar', 'ideas', 'tasks'];
+  function positionNavIndicator() {
+    const nav = document.getElementById('nav');
+    const ind = nav.querySelector('.nav-indicator'); if (!ind) return;
+    const active = nav.querySelector('.nav-item.active');
+    if (!active || window.innerWidth <= 900) { ind.style.opacity = '0'; return; }
+    ind.style.opacity = '1';
+    ind.style.top = (active.offsetTop + 11) + 'px';
+    ind.style.height = (active.offsetHeight - 22) + 'px';
+  }
   function switchView(v) {
     if (v === currentView) return;
+    const c = document.getElementById('view-container');
+    const sign = VIEW_ORDER.indexOf(v) > VIEW_ORDER.indexOf(currentView) ? 1 : -1;
     currentView = v; localStorage.setItem('castlesbay-view', v);
-    calDir = null; animateNext = true; render();
-    document.getElementById('view-container').scrollTop = 0;
+    // realce imediato da navegação (indicador desliza já)
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.view === v));
+    positionNavIndicator();
+
+    if (reducedMotion()) { calDir = null; animateNext = true; render(); c.scrollTop = 0; return; }
+
+    c.style.setProperty('--vx', (sign * 28) + 'px');
+    c.classList.remove('view-enter'); c.classList.add('view-leaving');
+    setTimeout(() => {
+      c.classList.remove('view-leaving');
+      calDir = null; animateNext = true; render(); c.scrollTop = 0;
+      const tt = document.querySelector('.topbar-title');
+      if (tt && tt.animate) tt.animate(
+        [{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'none' }],
+        { duration: 440, easing: 'cubic-bezier(.16,.84,.3,1)' });
+    }, 150);
   }
   function navPeriod(dir) {
     const delta = dir === 'next' ? 1 : -1;
@@ -1070,6 +1097,8 @@
     el.style.setProperty('--mx', (e.clientX - r.left) + 'px');
     el.style.setProperty('--my', (e.clientY - r.top) + 'px');
   }, { passive: true });
+
+  window.addEventListener('resize', positionNavIndicator);
   document.getElementById('add-category-btn').addEventListener('click', () => openCategoryModal(null));
 
   document.getElementById('category-list').addEventListener('click', e => {

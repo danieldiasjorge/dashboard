@@ -5,21 +5,21 @@
    ========================================================================= */
 
 :root {
-  --bg: #17161c;
-  --bg-2: #1c1a22;
-  --surface: #222029;
-  --surface-2: #2a2732;
-  --surface-3: #35323f;
-  --line: #3b3745;
-  --line-soft: #2c2934;
+  --bg: #0f1522;
+  --bg-2: #131b2b;
+  --surface: #172134;
+  --surface-2: #1e293f;
+  --surface-3: #29354e;
+  --line: #303e57;
+  --line-soft: #202b40;
   --gold: #c9a86a;
   --gold-bright: #e6cd95;
   --gold-deep: #9c7f49;
   --gold-tint: rgba(201, 168, 106, .13);
   --gold-line: rgba(201, 168, 106, .26);
-  --text: #ece8e1;
-  --text-soft: #a49e93;
-  --text-faint: #6c665c;
+  --text: #e9edf5;
+  --text-soft: #9aa6bc;
+  --text-faint: #67728a;
   --good: #86ab8e;
   --good-tint: rgba(134, 171, 142, .16);
   --danger: #cf7a76;
@@ -116,9 +116,10 @@ button { font-family: inherit; cursor: pointer; color: inherit; }
 }
 .nav-item:hover { background: var(--surface-2); color: var(--text); }
 .nav-item.active { color: var(--gold-bright); background: var(--surface-2); }
-.nav-item.active::before {
-  content: ""; position: absolute; left: 0; top: 10px; bottom: 10px; width: 2px;
-  border-radius: 2px; background: var(--gold-grad);
+.nav-indicator {
+  position: absolute; left: 0; width: 2px; border-radius: 2px; background: var(--gold-grad);
+  top: 0; height: 0; opacity: 0; box-shadow: 0 0 10px rgba(216,180,112,.5);
+  transition: top .34s cubic-bezier(.16,.84,.3,1), height .34s cubic-bezier(.16,.84,.3,1), opacity .2s ease;
 }
 .nav-ico { font-size: 14px; width: 16px; text-align: center; color: var(--text-faint); }
 .nav-item.active .nav-ico { color: var(--gold); }
@@ -624,7 +625,12 @@ button { font-family: inherit; cursor: pointer; color: inherit; }
 @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
 .rise { animation: rise .55s cubic-bezier(.16, .84, .3, 1) both; }
-.view-enter { animation: fadeUp .4s cubic-bezier(.16, .84, .3, 1) both; }
+
+/* transições de página */
+@keyframes viewEnter { from { opacity: 0; transform: translateX(var(--vx, 0px)) translateY(8px); filter: blur(6px); } to { opacity: 1; transform: none; filter: blur(0); } }
+@keyframes viewLeave { from { opacity: 1; filter: blur(0); } to { opacity: 0; transform: translateX(calc(var(--vx, 0px) * -1)) translateY(-4px); filter: blur(4px); } }
+.view-enter { animation: viewEnter .44s cubic-bezier(.16, .84, .3, 1) both; }
+.view-leaving { animation: viewLeave .16s cubic-bezier(.4, 0, 1, 1) forwards; }
 .calendar.slide-next { animation: slideFromRight .38s cubic-bezier(.2, .8, .2, 1) both; }
 .calendar.slide-prev { animation: slideFromLeft .38s cubic-bezier(.2, .8, .2, 1) both; }
 
@@ -713,7 +719,6 @@ body::after {
 
 /* realces de hover mais ricos */
 .kpi:hover, .card:hover, .panel:hover { box-shadow: var(--shadow), 0 0 0 1px var(--gold-line); }
-.nav-item.active::before { transition: top .2s cubic-bezier(.16,.84,.3,1), bottom .2s cubic-bezier(.16,.84,.3,1); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
