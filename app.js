@@ -1453,6 +1453,98 @@
   }
   document.getElementById('sync-btn').addEventListener('click', openSyncModal);
 
+  // ============================================================ ÁGUA (canvas)
+  const WATER = {
+    canvas: null, ctx: null, w: 0, h: 0, dpr: 1, particles: [], running: false, t: 0,
+    init() {
+      this.canvas = document.getElementById('water-canvas');
+      if (!this.canvas) return;
+      this.ctx = this.canvas.getContext('2d');
+      this.resize();
+      window.addEventListener('resize', () => this.resize());
+      if (reducedMotion()) { this.frame(0); return; }
+      this.running = true;
+      const loop = now => { if (!this.running) return; this.frame(now * 0.001); requestAnimationFrame(loop); };
+      requestAnimationFrame(loop);
+    },
+    resize() {
+      if (!this.ctx) return;
+      this.dpr = Math.min(2, window.devicePixelRatio || 1);
+      this.w = window.innerWidth;
+      this.h = this.canvas.offsetHeight || 240;
+      this.canvas.width = Math.floor(this.w * this.dpr);
+      this.canvas.height = Math.floor(this.h * this.dpr);
+      this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+      if (!this.running) this.frame(this.t);
+    },
+    palette() {
+      return document.documentElement.getAttribute('data-theme') === 'light'
+        ? { deep: 'rgba(92,150,182,0.55)', mid: 'rgba(122,182,210,0.5)', top: 'rgba(150,205,228,0.5)', foam: 'rgba(255,255,255,0.92)' }
+        : { deep: 'rgba(16,42,68,0.62)', mid: 'rgba(32,84,118,0.52)', top: 'rgba(56,130,156,0.48)', foam: 'rgba(206,234,244,0.9)' };
+    },
+    line(x, t, amp, base) {
+      return base + amp * (Math.sin(x * 0.010 + t * 1.1) + 0.6 * Math.sin(x * 0.019 - t * 1.7) + 0.9 * Math.sin(x * 0.005 + t * 0.6));
+    },
+    layer(t, base, amp, color, foam) {
+      const ctx = this.ctx, pts = [];
+      ctx.beginPath(); ctx.moveTo(0, this.h);
+      for (let x = 0; x <= this.w; x += 5) { const y = this.line(x, t, amp, base); pts.push(y); ctx.lineTo(x, y); }
+      ctx.lineTo(this.w, this.h); ctx.closePath();
+      ctx.fillStyle = color; ctx.fill();
+      if (foam) {
+        ctx.beginPath();
+        for (let i = 0; i < pts.length; i++) { const x = i * 5; i ? ctx.lineTo(x, pts[i]) : ctx.moveTo(x, pts[i]); }
+        ctx.strokeStyle = this.palette().foam; ctx.globalAlpha = 0.5; ctx.lineWidth = 2; ctx.stroke(); ctx.globalAlpha = 1;
+      }
+    },
+    frame(t) {
+      this.t = t; const ctx = this.ctx; if (!ctx) return;
+      ctx.clearRect(0, 0, this.w, this.h);
+      const p = this.palette();
+      const base = this.h * 0.5;
+      const railW = window.innerWidth > 900 ? 280 : 0;
+      this.layer(t * 0.8, base + 22, 12, p.deep, false);
+      this.layer(t * 1.05 + 2, base + 10, 9, p.mid, false);
+      this.layer(t * 1.3 + 4, base, 7, p.top, true);
+      if (railW && this.running) this.spawn(t, railW, base);
+      this.updateParticles(p, base);
+      if (railW) this.towerFoam(ctx, t, railW, base, p);
+    },
+    spawn(t, railW, base) {
+      const y = this.line(railW, t * 1.3 + 4, 7, base);
+      const crest = base - y;
+      if (Math.random() < 0.05 + Math.max(0, crest) * 0.02) {
+        const n = 3 + Math.floor(Math.random() * 5);
+        for (let i = 0; i < n; i++) this.particles.push({
+          x: railW + Math.random() * 4, y: y - Math.random() * 4,
+          vx: 0.3 + Math.random() * 2.0, vy: -(2.4 + Math.random() * 3.4),
+          r: 0.8 + Math.random() * 2.2, life: 0, max: 45 + Math.random() * 40
+        });
+      }
+    },
+    updateParticles(p, base) {
+      const ctx = this.ctx, g = 0.15;
+      ctx.fillStyle = p.foam;
+      for (let i = this.particles.length - 1; i >= 0; i--) {
+        const d = this.particles[i];
+        d.vy += g; d.x += d.vx; d.y += d.vy; d.life++;
+        const ground = this.line(d.x, this.t * 1.3 + 4, 7, base);
+        ctx.globalAlpha = Math.max(0, 1 - d.life / d.max);
+        ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2); ctx.fill();
+        if ((d.vy > 0 && d.y > ground) || d.life > d.max) this.particles.splice(i, 1);
+      }
+      ctx.globalAlpha = 1;
+    },
+    towerFoam(ctx, t, railW, base, p) {
+      const y = this.line(railW, t * 1.3 + 4, 7, base);
+      const grd = ctx.createRadialGradient(railW, y, 0, railW, y, 30);
+      grd.addColorStop(0, p.foam); grd.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.globalAlpha = 0.5; ctx.fillStyle = grd;
+      ctx.beginPath(); ctx.ellipse(railW, y, 22, 9, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+  };
+
   // ============================================================ TEMA
   const THEME = {
     key: 'castlesbay-theme',
@@ -1473,4 +1565,5 @@
   // ============================================================ ARRANQUE
   render();
   SYNC.init();
+  WATER.init();
 })();
