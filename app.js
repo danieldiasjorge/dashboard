@@ -627,6 +627,7 @@
   const modalBody = document.getElementById('modal-body');
 
   function openModal(title, bodyHTML, onMount) {
+    setMenu(false);
     modalTitle.textContent = title;
     modalBody.innerHTML = bodyHTML;
     backdrop.hidden = false;
@@ -1108,13 +1109,23 @@
   }, { passive: true });
 
   window.addEventListener('resize', positionNavIndicator);
+
+  // menu mobile (drawer com categorias + ferramentas)
+  const menuBackdrop = document.getElementById('menu-backdrop');
+  function setMenu(open) {
+    document.body.classList.toggle('menu-open', open);
+    document.getElementById('menu-toggle').setAttribute('aria-expanded', open ? 'true' : 'false');
+    menuBackdrop.hidden = !open;
+  }
+  document.getElementById('menu-toggle').addEventListener('click', () => setMenu(!document.body.classList.contains('menu-open')));
+  menuBackdrop.addEventListener('click', () => setMenu(false));
   document.getElementById('add-category-btn').addEventListener('click', () => { if (!isReadOnly()) openCategoryModal(null); });
 
   document.getElementById('category-list').addEventListener('click', e => {
     const edit = e.target.closest('[data-edit-cat]');
     if (edit) { e.stopPropagation(); if (!isReadOnly()) openCategoryModal(edit.dataset.editCat); return; }
     const row = e.target.closest('[data-cat]');
-    if (row) { const id = row.dataset.cat; categoryFilter = (categoryFilter === id) ? 'all' : id; render(); }
+    if (row) { const id = row.dataset.cat; categoryFilter = (categoryFilter === id) ? 'all' : id; render(); setMenu(false); }
   });
   document.getElementById('category-list').addEventListener('keydown', e => {
     if (e.key !== 'Enter' && e.key !== ' ') return;
@@ -1709,7 +1720,7 @@
       localStorage.setItem(this.key, next); this.apply(next);
     }
   };
-  document.getElementById('theme-toggle').addEventListener('click', () => THEME.toggle());
+  document.getElementById('theme-toggle').addEventListener('click', () => { THEME.toggle(); setMenu(false); });
   THEME.apply(THEME.get());
 
   // ============================================================ AUTENTICAÇÃO
