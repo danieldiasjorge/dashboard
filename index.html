@@ -13,9 +13,10 @@
   <div class="ambient" aria-hidden="true"><span></span><span></span><span></span></div>
   <div class="water" aria-hidden="true"><canvas id="water-canvas"></canvas></div>
   <div id="app">
-    <div class="tower-light" aria-hidden="true"></div>
-    <!-- Rail (torre) -->
-    <aside class="rail">
+    <!-- Coluna da torre: céu (muda com a hora) + torre -->
+    <div class="tower-col">
+      <div class="sky" aria-hidden="true"><canvas id="sky-canvas"></canvas></div>
+      <aside class="rail">
       <div class="wordmark">
         <div class="wordmark-mark">CB</div>
         <div class="wordmark-text">
@@ -64,6 +65,7 @@
         </div>
       </div>
     </aside>
+    </div>
 
     <!-- Main -->
     <main class="main">

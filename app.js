@@ -1587,6 +1587,82 @@
     }
   };
 
+  // ============================================================ CÉU (canvas)
+  const SKY = {
+    canvas: null, ctx: null, w: 0, h: 0, dpr: 1, stars: [], clouds: [], running: false,
+    init() {
+      this.canvas = document.getElementById('sky-canvas');
+      if (!this.canvas) return;
+      this.ctx = this.canvas.getContext('2d');
+      this.resize();
+      window.addEventListener('resize', () => this.resize());
+      if (reducedMotion()) { this.frame(0); return; }
+      this.running = true;
+      const loop = now => { if (!this.running) return; this.frame(now * 0.001); requestAnimationFrame(loop); };
+      requestAnimationFrame(loop);
+    },
+    resize() {
+      if (!this.ctx) return;
+      this.dpr = Math.min(2, window.devicePixelRatio || 1);
+      this.w = this.canvas.offsetWidth || 280;
+      this.h = this.canvas.offsetHeight || 104;
+      this.canvas.width = Math.floor(this.w * this.dpr);
+      this.canvas.height = Math.floor(this.h * this.dpr);
+      this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+      this.build();
+      if (!this.running) this.frame(0);
+    },
+    build() {
+      const rnd = (a, b) => a + Math.random() * (b - a);
+      this.stars = Array.from({ length: 26 }, () => ({ x: rnd(6, this.w - 6), y: rnd(6, this.h * 0.74), r: rnd(0.5, 1.4), ph: rnd(0, 6.28), sp: rnd(0.7, 1.8) }));
+      this.clouds = Array.from({ length: 3 }, () => ({ x: rnd(0, this.w), y: rnd(this.h * 0.16, this.h * 0.58), s: rnd(0.7, 1.15), sp: rnd(3, 7) }));
+    },
+    isDay() { const n = new Date(); const m = n.getHours() * 60 + n.getMinutes(); return m >= 420 && m <= 1230; }, // 07:00–20:30
+    frame(t) { if (!this.ctx) return; this.isDay() ? this.day(t) : this.night(t); },
+    day(t) {
+      const ctx = this.ctx, w = this.w, h = this.h;
+      const g = ctx.createLinearGradient(0, 0, 0, h);
+      g.addColorStop(0, '#8ec2e8'); g.addColorStop(1, '#d2eaf7');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+      for (const c of this.clouds) {
+        const span = w + 90;
+        let x = c.x - (this.running ? (t * c.sp) : 0);
+        x = ((x % span) + span) % span - 45;
+        this.cloud(ctx, x, c.y, c.s);
+      }
+    },
+    cloud(ctx, x, y, s) {
+      const puffs = [[0, 0, 16], [14, 4, 12], [-14, 4, 12], [6, -6, 11], [-8, -5, 10]];
+      for (const [dx, dy, r] of puffs) {
+        const rr = r * s, cx = x + dx * s, cy = y + dy * s;
+        const gr = ctx.createRadialGradient(cx, cy, 0, cx, cy, rr);
+        gr.addColorStop(0, 'rgba(255,255,255,.92)'); gr.addColorStop(0.7, 'rgba(255,255,255,.7)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(cx, cy, rr, 0, 6.29); ctx.fill();
+      }
+    },
+    night(t) {
+      const ctx = this.ctx, w = this.w, h = this.h;
+      const g = ctx.createLinearGradient(0, 0, 0, h);
+      g.addColorStop(0, '#0a1120'); g.addColorStop(1, '#152340');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+      // lua (crescente) com halo
+      const mx = w - 42, my = 30, mr = 14;
+      const halo = ctx.createRadialGradient(mx, my, 0, mx, my, mr * 2.6);
+      halo.addColorStop(0, 'rgba(214,224,240,.38)'); halo.addColorStop(1, 'rgba(214,224,240,0)');
+      ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(mx, my, mr * 2.6, 0, 6.29); ctx.fill();
+      ctx.fillStyle = '#e8eef7'; ctx.beginPath(); ctx.arc(mx, my, mr, 0, 6.29); ctx.fill();
+      ctx.save(); ctx.globalCompositeOperation = 'destination-out';
+      ctx.beginPath(); ctx.arc(mx + 6, my - 4, mr, 0, 6.29); ctx.fill(); ctx.restore();
+      // estrelas a tilintar (levemente)
+      for (const s of this.stars) {
+        const a = this.running ? (0.6 + 0.32 * Math.sin(t * s.sp + s.ph)) : 0.72;
+        ctx.globalAlpha = Math.max(0, a);
+        ctx.fillStyle = '#eaf0fb'; ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 6.29); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+  };
+
   // ============================================================ TEMA
   const THEME = {
     key: 'castlesbay-theme',
@@ -1608,4 +1684,5 @@
   render();
   SYNC.init();
   WATER.init();
+  SKY.init();
 })();
