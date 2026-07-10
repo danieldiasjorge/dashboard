@@ -1472,6 +1472,7 @@
     canvas: null, ctx: null, w: 0, h: 0, dpr: 1, particles: [], running: false, t: 0,
     surge: null, nextSurge: null, burstAt: 0,
     pX: 0, pOver: false, pStr: 0, pSpeed: 0, _lx: 0, _ly: 0,
+    rest: 0, level: 0, mode: 'rest', floodStart: 0, onPeak: null, peakFired: false,
     init() {
       this.canvas = document.getElementById('water-canvas');
       if (!this.canvas) return;
@@ -1493,7 +1494,15 @@
       this.canvas.width = Math.floor(this.w * this.dpr);
       this.canvas.height = Math.floor(this.h * this.dpr);
       this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+      this.rest = this.h - 130; // linha de água em repouso (fundo do ecrã)
+      if (this.mode === 'rest') this.level = this.rest;
       if (!this.running) this.frame(this.t);
+    },
+    // transição de "cheia": sobe até ao topo e esvazia até ao nível normal
+    flood(onPeak) {
+      if (!this.running) { if (onPeak) onPeak(); return; }
+      this.mode = 'flood'; this.floodStart = this.t; this.peakFired = false; this.onPeak = onPeak || null;
+      document.body.classList.add('flooding');
     },
     palette() {
       return document.documentElement.getAttribute('data-theme') === 'light'
@@ -1527,7 +1536,7 @@
     onPointer(e) {
       if (!this.ctx) return;
       const rect = this.canvas.getBoundingClientRect();
-      const lineY = rect.top + this.h * 0.5;
+      const lineY = rect.top + this.level;
       this.pX = e.clientX - rect.left;
       this.pOver = e.clientY > lineY - 80 && e.clientY < rect.bottom + 30;
       this.pSpeed = Math.hypot(e.clientX - this._lx, e.clientY - this._ly);
@@ -1542,9 +1551,18 @@
     disturb(x) { return this.surgeOffset(x) + this.pointerOffset(x); },
     frame(t) {
       this.t = t; const ctx = this.ctx; if (!ctx) return;
+      // transição de cheia: sobe até ao topo, esvazia até ao nível normal
+      if (this.mode === 'flood') {
+        const e = t - this.floodStart, up = 0.8, hold = 0.18, down = 1.3;
+        const ez = q => q < .5 ? 4 * q * q * q : 1 - Math.pow(-2 * q + 2, 3) / 2;
+        if (e < up) this.level = this.rest + (0 - this.rest) * ez(e / up);
+        else if (e < up + hold) { this.level = 0; if (!this.peakFired) { this.peakFired = true; if (this.onPeak) this.onPeak(); } }
+        else if (e < up + hold + down) this.level = this.rest * ez((e - up - hold) / down);
+        else { this.level = this.rest; this.mode = 'rest'; document.body.classList.remove('flooding'); }
+      }
       ctx.clearRect(0, 0, this.w, this.h);
       const p = this.palette();
-      const base = this.h * 0.5;
+      const base = this.level;
       const railW = window.innerWidth > 900 ? 280 : 0;
       // reação ao cursor: a água segue o rato (elevação local) e salpica ao mexer depressa
       this.pStr += ((this.pOver ? 1 : 0) - this.pStr) * 0.12;
@@ -1554,7 +1572,7 @@
         this.pSpeed *= 0.4;
       }
       // onda grande de ~10 em ~10s: bate na torre e rebenta em espuma
-      if (this.running && railW) {
+      if (this.running && railW && this.mode === 'rest') {
         if (this.nextSurge == null) this.nextSurge = t + 3;
         if (t >= this.nextSurge) { this.surge = { start: t, dur: 1.4, amp: 48, x: railW }; this.burstAt = t + 0.42; this.nextSurge = t + 10; }
         if (this.burstAt && t >= this.burstAt) { this.spawnBurst(railW, base); this.burstAt = 0; }
@@ -1715,11 +1733,13 @@
     apply(user, role) {
       authRole = role;
       document.body.classList.toggle('readonly', role === 'guest');
+      document.body.classList.remove('pre-auth');
       document.getElementById('login').hidden = true;
       const name = document.getElementById('rail-user-name');
       if (name) name.textContent = role === 'guest' ? 'Convidado · só leitura' : user;
     },
     showLogin() {
+      document.body.classList.add('pre-auth');
       document.getElementById('login').hidden = false;
       setTimeout(() => { const u = document.getElementById('login-user'); if (u) u.focus(); }, 60);
     },
@@ -1735,7 +1755,13 @@
         document.getElementById('login-pass').value = '';
         if (ok) {
           localStorage.setItem('cb-auth', JSON.stringify({ user, role: acc.role }));
-          err.hidden = true; this.apply(user, acc.role); render();
+          err.hidden = true;
+          const finish = () => { this.apply(user, acc.role); render(); };
+          const card = document.querySelector('.login-card');
+          if (WATER.running) {
+            if (card) card.classList.add('leaving');
+            WATER.flood(finish); // ao chegar ao topo, revela a app; a água esvazia por cima
+          } else finish();
         } else { err.hidden = false; }
       });
       document.getElementById('logout-btn').addEventListener('click', () => {
