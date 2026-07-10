@@ -817,7 +817,7 @@ body::after {
 /* menu mobile (escondido no desktop) */
 .menu-toggle { display: none; }
 .rail-drawer { display: contents; }
-.menu-backdrop { display: none; }
+.menu-backdrop, .mobile-drawer { display: none; }
 
 /* ------------------------------------------------------------ RESPONSIVE */
 @media (max-width: 900px) {
@@ -847,15 +847,14 @@ body::after {
     width: 40px; height: 40px; border-radius: var(--radius-sm); font-size: 17px;
     background: var(--surface-2); border: 1px solid var(--line); color: var(--text-soft);
   }
-  .rail-drawer { display: none; }
-  body.menu-open .rail-drawer {
+  .rail .rail-drawer { display: none; } /* escondido enquanto está na barra do topo */
+  body.menu-open #mobile-drawer {
     display: flex; flex-direction: column; gap: 18px;
     position: fixed; top: 0; left: 0; right: 0; z-index: 130;
     background: var(--surface); border-bottom: 1px solid var(--line); box-shadow: var(--shadow);
     padding: 16px 16px 22px; max-height: 92vh; overflow-y: auto; animation: rise .26s ease;
   }
-  body.menu-open .rail-section, body.menu-open .rail-foot { display: flex; flex-direction: column; }
-  body.menu-open .menu-backdrop { display: block; position: fixed; inset: 0; z-index: 125; background: rgba(3,5,10,.5); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }
+  body.menu-open .menu-backdrop { display: block; position: fixed; inset: 0; z-index: 125; background: rgba(3,5,10,.55); }
   .rail-foot { margin: 0; padding: 0; background: none; }
   .rail-tools { flex-wrap: wrap; }
   .rail-tools .ghost-btn { flex: 1 1 30%; }

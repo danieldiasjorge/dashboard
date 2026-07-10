@@ -1108,17 +1108,26 @@
     el.style.setProperty('--my', (e.clientY - r.top) + 'px');
   }, { passive: true });
 
-  window.addEventListener('resize', positionNavIndicator);
-
-  // menu mobile (drawer com categorias + ferramentas)
+  // menu mobile (drawer com categorias + ferramentas) — movido para fora da
+  // barra ao abrir, para não ficar preso no seu contexto de blur/z-index
   const menuBackdrop = document.getElementById('menu-backdrop');
+  const mobileDrawer = document.getElementById('mobile-drawer');
+  const railDrawer = document.querySelector('.rail-drawer');
+  const railEl = document.querySelector('.rail');
   function setMenu(open) {
+    if (open && railDrawer.parentElement !== mobileDrawer) mobileDrawer.appendChild(railDrawer);
+    else if (!open && railDrawer.parentElement !== railEl) railEl.appendChild(railDrawer);
     document.body.classList.toggle('menu-open', open);
     document.getElementById('menu-toggle').setAttribute('aria-expanded', open ? 'true' : 'false');
     menuBackdrop.hidden = !open;
   }
   document.getElementById('menu-toggle').addEventListener('click', () => setMenu(!document.body.classList.contains('menu-open')));
   menuBackdrop.addEventListener('click', () => setMenu(false));
+
+  window.addEventListener('resize', () => {
+    positionNavIndicator();
+    if (window.innerWidth > 900 && document.body.classList.contains('menu-open')) setMenu(false);
+  });
   document.getElementById('add-category-btn').addEventListener('click', () => { if (!isReadOnly()) openCategoryModal(null); });
 
   document.getElementById('category-list').addEventListener('click', e => {
