@@ -82,25 +82,16 @@ button { font-family: inherit; cursor: pointer; color: inherit; }
 
 #app { display: grid; grid-template-columns: 280px 1fr; height: 100vh; overflow: hidden; position: relative; z-index: 1; }
 
-/* luz dourada a brilhar por entre as ameias da torre (farol) */
+/* luz dourada suave ATRÁS da torre — transparece pelos intervalos das ameias */
 .tower-light {
-  position: absolute; top: 0; left: 0; width: 280px; height: 46px; z-index: 6; pointer-events: none;
-  mix-blend-mode: screen;
-  background:
-    radial-gradient(55% 90% at 50% 2%, rgba(245,214,150,1), transparent 72%),
-    radial-gradient(130% 130% at 50% -8%, rgba(224,188,120,.6), transparent 66%);
-  filter: blur(2px); animation: beacon 4.4s ease-in-out infinite;
+  position: absolute; top: -8px; left: 0; width: 280px; height: 54px; z-index: 2; pointer-events: none;
+  background: radial-gradient(120% 100% at 50% 0%, rgba(226,190,124,.5), rgba(226,190,124,.14) 46%, transparent 70%);
+  filter: blur(6px); animation: beacon 5.5s ease-in-out infinite;
 }
-.tower-light::after {
-  content: ""; position: absolute; left: 10px; right: 10px; top: 19px; height: 3px; border-radius: 3px;
-  background: linear-gradient(90deg, transparent, rgba(245,216,150,.95) 20%, rgba(245,216,150,.95) 80%, transparent);
-  filter: blur(.6px); mix-blend-mode: screen;
-}
-@keyframes beacon { 0%,100% { opacity: .72; } 50% { opacity: 1; } }
+@keyframes beacon { 0%,100% { opacity: .42; } 50% { opacity: .72; } }
 :root[data-theme="light"] .tower-light {
-  background: radial-gradient(130% 100% at 50% -14%, rgba(154,123,63,.5), rgba(154,123,63,.2) 42%, transparent 66%);
+  background: radial-gradient(120% 100% at 50% 0%, rgba(154,123,63,.38), transparent 66%);
 }
-:root[data-theme="light"] .tower-light::after { background: linear-gradient(90deg, transparent, rgba(154,123,63,.7), transparent); }
 
 /* ---------------------------------------------------------------- RAIL */
 .rail {
