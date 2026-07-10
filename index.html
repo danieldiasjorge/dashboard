@@ -63,6 +63,10 @@
           <button id="import-btn" class="ghost-btn" title="Restaurar cópia de segurança">Importar</button>
           <input type="file" id="import-file" accept="application/json" hidden />
         </div>
+        <div class="rail-user">
+          <span id="rail-user-name" class="rail-user-name"></span>
+          <button id="logout-btn" class="ghost-btn" title="Terminar sessão">Sair</button>
+        </div>
       </div>
     </aside>
     </div>
@@ -110,6 +114,23 @@
   </div>
 
   <div id="toast" class="toast" hidden></div>
+
+  <!-- Ecrã de entrada -->
+  <div id="login" class="login-screen" hidden>
+    <form id="login-form" class="login-card" autocomplete="off">
+      <div class="login-mark">CB</div>
+      <div class="login-title">Castles Bay</div>
+      <div class="login-sub">Escritório de Comunicação</div>
+      <label class="login-field"><span>Utilizador</span>
+        <input type="text" id="login-user" autocapitalize="none" autocomplete="username" placeholder="admin ou convidado" />
+      </label>
+      <label class="login-field"><span>Palavra-passe</span>
+        <input type="password" id="login-pass" autocomplete="current-password" placeholder="••••••••" />
+      </label>
+      <div id="login-error" class="login-error" hidden>Utilizador ou palavra-passe incorretos.</div>
+      <button type="submit" class="primary-btn login-btn">Entrar</button>
+    </form>
+  </div>
 
   <!-- Firebase SDK (compat) — sincronização entre dispositivos.
        Sem rede/config, a app funciona só neste dispositivo. -->

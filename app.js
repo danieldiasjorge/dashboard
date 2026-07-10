@@ -42,6 +42,8 @@
   let animateNext = true;   // anima a próxima render (ao navegar)
   let calDir = null;        // 'next' | 'prev' — direção do deslize do mês
   let dragPostId = null;    // post a ser arrastado no calendário
+  let authRole = 'admin';   // 'admin' (controlo total) | 'guest' (só leitura)
+  const isReadOnly = () => authRole === 'guest';
 
   // ------------------------------------------------------------- utils
   function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
@@ -74,6 +76,7 @@
     catch (e) { toast('Armazenamento local cheio — exporta uma cópia.'); }
   }
   function save() {
+    if (isReadOnly()) return; // convidado nunca escreve
     persistLocal();
     if (SYNC.ready && !SYNC.applyingRemote) SYNC.push();
   }
@@ -628,7 +631,12 @@
     modalBody.innerHTML = bodyHTML;
     backdrop.hidden = false;
     if (onMount) onMount();
-    const f = modalBody.querySelector('input, textarea, select'); if (f) f.focus();
+    if (isReadOnly()) {
+      modalBody.querySelectorAll('input, textarea, select').forEach(el => { el.disabled = true; });
+      modalBody.querySelectorAll('.color-swatch, .seg-btn, .media-add, .media-remove, .toggle').forEach(el => { el.style.pointerEvents = 'none'; });
+      modalBody.querySelectorAll('.primary-btn, .btn-danger').forEach(el => el.remove());
+    }
+    const f = modalBody.querySelector('input, textarea, select'); if (f && !f.disabled) f.focus();
   }
   function closeModal() { backdrop.hidden = true; modalBody.innerHTML = ''; }
 
@@ -1002,6 +1010,7 @@
     calDir = null; animateNext = true; render();
   }
   function primaryAction() {
+    if (isReadOnly()) return;
     if (currentView === 'ideas') openIdeaModal(null);
     else if (currentView === 'tasks') openTaskModal(null);
     else openPostModal(null, null);
@@ -1099,11 +1108,11 @@
   }, { passive: true });
 
   window.addEventListener('resize', positionNavIndicator);
-  document.getElementById('add-category-btn').addEventListener('click', () => openCategoryModal(null));
+  document.getElementById('add-category-btn').addEventListener('click', () => { if (!isReadOnly()) openCategoryModal(null); });
 
   document.getElementById('category-list').addEventListener('click', e => {
     const edit = e.target.closest('[data-edit-cat]');
-    if (edit) { e.stopPropagation(); openCategoryModal(edit.dataset.editCat); return; }
+    if (edit) { e.stopPropagation(); if (!isReadOnly()) openCategoryModal(edit.dataset.editCat); return; }
     const row = e.target.closest('[data-cat]');
     if (row) { const id = row.dataset.cat; categoryFilter = (categoryFilter === id) ? 'all' : id; render(); }
   });
@@ -1118,7 +1127,7 @@
     const emptyCta = e.target.closest('[data-empty-cta]'); if (emptyCta) { primaryAction(); return; }
     const mpTrigger = e.target.closest('[data-monthpicker]'); if (mpTrigger) { openMonthPicker(mpTrigger); return; }
     const cvBtn = e.target.closest('[data-calview]'); if (cvBtn) { setCalView(cvBtn.dataset.calview); return; }
-    const newNote = e.target.closest('[data-newnote]'); if (newNote) { openNoteModal(null, calView === 'day' ? toISO(calRef) : todayISO()); return; }
+    const newNote = e.target.closest('[data-newnote]'); if (newNote) { if (!isReadOnly()) openNoteModal(null, calView === 'day' ? toISO(calRef) : todayISO()); return; }
     const calBtn = e.target.closest('[data-cal]');
     if (calBtn) {
       const dir = calBtn.dataset.cal;
@@ -1127,13 +1136,14 @@
     }
     const noteEl = e.target.closest('[data-note]'); if (noteEl) { openNoteModal(noteEl.dataset.note); return; }
     const postEl = e.target.closest('[data-post]'); if (postEl) { openPostModal(postEl.dataset.post); return; }
-    const cell = e.target.closest('[data-day]'); if (cell) { openPostModal(null, cell.dataset.day); return; }
+    const cell = e.target.closest('[data-day]'); if (cell) { if (!isReadOnly()) openPostModal(null, cell.dataset.day); return; }
 
     const delIdea = e.target.closest('[data-del-idea]'); if (delIdea) { deleteWithUndo('ideas', delIdea.dataset.delIdea); return; }
     const ideaCard = e.target.closest('[data-idea]'); if (ideaCard) { openIdeaModal(ideaCard.dataset.idea); return; }
 
     const comp = e.target.closest('[data-complete]');
     if (comp) {
+      if (isReadOnly()) return;
       const t = state.tasks.find(x => x.id === comp.dataset.complete);
       if (t) { const done = (t.status || 'todo') === 'done'; t.status = done ? 'todo' : 'done'; t.done = !done; save(); animateNext = false; render(); }
       return;
@@ -1149,6 +1159,7 @@
     notes: ['Nota eliminada', 'Nota reposta']
   };
   function deleteWithUndo(key, id) {
+    if (isReadOnly()) return;
     const idx = state[key].findIndex(x => x.id === id);
     if (idx === -1) return;
     const [removed] = state[key].splice(idx, 1);
@@ -1182,6 +1193,7 @@
   // ---- Arrastar posts entre dias para reagendar
   const vc = document.getElementById('view-container');
   vc.addEventListener('dragstart', e => {
+    if (isReadOnly()) { e.preventDefault(); return; }
     const p = e.target.closest('.cal-post[data-post]'); if (!p) return;
     dragPostId = p.dataset.post; p.classList.add('dragging');
     e.dataTransfer.effectAllowed = 'move';
@@ -1216,6 +1228,7 @@
   // ---- Arrastar tarefas entre colunas do Kanban
   let dragTaskId = null;
   vc.addEventListener('dragstart', e => {
+    if (isReadOnly()) { e.preventDefault(); return; }
     const c = e.target.closest('.tcard[data-task]'); if (!c) return;
     dragTaskId = c.dataset.task; c.classList.add('dragging');
     e.dataTransfer.effectAllowed = 'move';
@@ -1283,6 +1296,7 @@
   });
   document.getElementById('import-btn').addEventListener('click', () => document.getElementById('import-file').click());
   document.getElementById('import-file').addEventListener('change', e => {
+    if (isReadOnly()) return;
     const file = e.target.files[0]; if (!file) return;
     const reader = new FileReader();
     reader.onload = async () => {
@@ -1680,7 +1694,58 @@
   document.getElementById('theme-toggle').addEventListener('click', () => THEME.toggle());
   THEME.apply(THEME.get());
 
+  // ============================================================ AUTENTICAÇÃO
+  const SALT = 'cb-castlesbay-2026-v1';
+  const ACCOUNTS = {
+    admin: { hash: '57a02277917a4b5610f4837adc5217bc24ae6e2b7ce8fb34eba201fb53020937', role: 'admin' },
+    convidado: { hash: '77e58587f8e8c387c55e943b0c04a2008c65950b7a8665e2797a1abcc783d47b', role: 'guest' }
+  };
+  async function sha256hex(str) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+  const AUTH = {
+    init() {
+      let s = null;
+      try { s = JSON.parse(localStorage.getItem('cb-auth') || 'null'); } catch {}
+      if (s && ACCOUNTS[s.user] && ACCOUNTS[s.user].role === s.role) this.apply(s.user, s.role);
+      else this.showLogin();
+      this.wire();
+    },
+    apply(user, role) {
+      authRole = role;
+      document.body.classList.toggle('readonly', role === 'guest');
+      document.getElementById('login').hidden = true;
+      const name = document.getElementById('rail-user-name');
+      if (name) name.textContent = role === 'guest' ? 'Convidado · só leitura' : user;
+    },
+    showLogin() {
+      document.getElementById('login').hidden = false;
+      setTimeout(() => { const u = document.getElementById('login-user'); if (u) u.focus(); }, 60);
+    },
+    wire() {
+      document.getElementById('login-form').addEventListener('submit', async e => {
+        e.preventDefault();
+        const user = document.getElementById('login-user').value.trim().toLowerCase();
+        const pass = document.getElementById('login-pass').value;
+        const err = document.getElementById('login-error');
+        const acc = ACCOUNTS[user];
+        let ok = false;
+        if (acc) { try { ok = (await sha256hex(user + '\n' + pass + '\n' + SALT)) === acc.hash; } catch (e) { console.error(e); } }
+        document.getElementById('login-pass').value = '';
+        if (ok) {
+          localStorage.setItem('cb-auth', JSON.stringify({ user, role: acc.role }));
+          err.hidden = true; this.apply(user, acc.role); render();
+        } else { err.hidden = false; }
+      });
+      document.getElementById('logout-btn').addEventListener('click', () => {
+        localStorage.removeItem('cb-auth'); location.reload();
+      });
+    }
+  };
+
   // ============================================================ ARRANQUE
+  AUTH.init();
   render();
   SYNC.init();
   WATER.init();
