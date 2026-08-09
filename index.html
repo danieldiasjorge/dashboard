@@ -3,147 +3,214 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#0c0d10" />
-  <title>Castles Bay · Escritório de Comunicação</title>
+  <meta name="theme-color" content="#e9e1d2" />
+  <title>28 de Maio de 2027</title>
   <link rel="stylesheet" href="fonts.css" />
-  <link rel="stylesheet" href="styles.css" />
+  <style>
+    :root{
+      --marble:#efe8da;
+      --marble-2:#e4dbc8;
+      --ink:#2a3b4d;          /* azul egeu escuro */
+      --ink-soft:#5c6b78;
+      --gold:#b28f4d;
+      --gold-soft:#c9a86a;
+      --stone:#d8cdb6;
+      --line:rgba(42,59,77,.16);
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%}
+    body{
+      font-family:"Jost","Playfair Display",serif;
+      color:var(--ink);
+      background:
+        radial-gradient(1200px 800px at 50% -10%, #fbf7ee 0%, transparent 60%),
+        radial-gradient(1000px 700px at 50% 120%, #ded2b8 0%, transparent 55%),
+        linear-gradient(160deg, var(--marble) 0%, var(--marble-2) 100%);
+      min-height:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+      position:relative;
+      -webkit-font-smoothing:antialiased;
+    }
+    /* veios subtis de mármore */
+    body::before{
+      content:"";position:fixed;inset:0;pointer-events:none;opacity:.5;
+      background:
+        repeating-linear-gradient(114deg, transparent 0 38px, rgba(255,255,255,.35) 38px 39px, transparent 39px 90px),
+        repeating-linear-gradient(72deg, transparent 0 60px, rgba(42,59,77,.03) 60px 61px, transparent 61px 130px);
+      mix-blend-mode:soft-light;
+    }
+
+    /* ---- Colunas dóricas ---- */
+    .column{
+      position:fixed;top:0;bottom:0;width:120px;z-index:1;pointer-events:none;
+    }
+    .column.left{left:2.5vw}
+    .column.right{right:2.5vw}
+    .shaft{
+      position:absolute;top:120px;bottom:120px;left:14px;right:14px;
+      background:
+        linear-gradient(90deg,
+          rgba(42,59,77,.20) 0%, rgba(255,255,255,.55) 8%,
+          rgba(255,255,255,.15) 22%, rgba(42,59,77,.10) 38%,
+          rgba(255,255,255,.35) 52%, rgba(42,59,77,.10) 66%,
+          rgba(255,255,255,.15) 80%, rgba(42,59,77,.22) 100%),
+        repeating-linear-gradient(90deg,
+          rgba(42,59,77,.10) 0 2px, transparent 2px 16px),
+        linear-gradient(180deg,#f3ecdd,#e2d7c0);
+      border-radius:4px;
+    }
+    /* capitel (echino + ábaco) */
+    .capital{position:absolute;top:78px;left:2px;right:2px;height:42px}
+    .capital::before{content:"";position:absolute;bottom:0;left:8px;right:8px;height:20px;
+      background:linear-gradient(180deg,#f2ecdd,#d9ceb6);border-radius:0 0 40% 40%/0 0 100% 100%}
+    .capital::after{content:"";position:absolute;top:0;left:0;right:0;height:24px;
+      background:linear-gradient(180deg,#f6f0e2,#e0d5be);box-shadow:0 3px 6px rgba(42,59,77,.10)}
+    /* base */
+    .base{position:absolute;bottom:78px;left:0;right:0;height:44px}
+    .base::before{content:"";position:absolute;top:0;left:8px;right:8px;height:22px;
+      background:linear-gradient(180deg,#eee7d7,#d5cab2);border-radius:40% 40% 0 0/100% 100% 0 0}
+    .base::after{content:"";position:absolute;bottom:0;left:-2px;right:-2px;height:24px;
+      background:linear-gradient(180deg,#efe8d8,#d3c8af);box-shadow:0 4px 10px rgba(42,59,77,.12)}
+
+    /* ---- moldura de meandro (grega) em cima e em baixo ---- */
+    .meander{position:fixed;left:0;right:0;height:34px;z-index:3;pointer-events:none;
+      background-repeat:repeat-x;background-size:auto 34px;opacity:.85}
+    .meander.top{top:26px}
+    .meander.bottom{bottom:26px;transform:scaleY(-1)}
+
+    /* ---- conteúdo central ---- */
+    .stage{position:relative;z-index:4;text-align:center;padding:24px}
+    .wreath{position:absolute;left:50%;top:52%;transform:translate(-50%,-50%);
+      width:min(78vw,560px);opacity:.9;z-index:-1;pointer-events:none}
+
+    .eyebrow{
+      font-family:"Jost",sans-serif;font-weight:500;letter-spacing:.42em;text-transform:uppercase;
+      font-size:clamp(11px,1.5vw,15px);color:var(--gold);margin-bottom:6px;padding-left:.42em;
+    }
+    .count{
+      font-family:"Playfair Display",serif;font-weight:700;line-height:1;
+      font-size:clamp(92px,24vw,248px);
+      color:var(--ink);
+      text-shadow:0 2px 0 rgba(255,255,255,.6),0 18px 40px rgba(42,59,77,.18);
+      font-variant-numeric:tabular-nums;
+    }
+    .count .flip{display:inline-block;animation:rise .8s cubic-bezier(.2,.8,.2,1) both}
+    .unit{
+      font-family:"Jost",sans-serif;font-weight:600;letter-spacing:.5em;text-transform:uppercase;
+      font-size:clamp(14px,2.4vw,22px);color:var(--ink-soft);margin-top:14px;padding-left:.5em;
+    }
+    .divider{display:flex;align-items:center;justify-content:center;gap:14px;margin:22px 0 14px}
+    .divider .rule{height:1px;width:min(22vw,120px);background:linear-gradient(90deg,transparent,var(--gold))}
+    .divider .rule.r{background:linear-gradient(90deg,var(--gold),transparent)}
+    .divider .gem{width:9px;height:9px;transform:rotate(45deg);background:var(--gold);box-shadow:0 0 0 4px rgba(178,143,77,.15)}
+    .target{
+      font-family:"Playfair Display",serif;font-style:italic;font-weight:400;
+      font-size:clamp(18px,3.4vw,30px);color:var(--ink);letter-spacing:.02em;
+    }
+    .foot{
+      margin-top:10px;font-family:"Jost",sans-serif;letter-spacing:.34em;text-transform:uppercase;
+      font-size:clamp(10px,1.4vw,12px);color:var(--ink-soft);opacity:.7;padding-left:.34em;
+    }
+
+    @keyframes rise{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:translateY(0)}}
+
+    @media (max-width:820px){
+      .column{display:none}
+      .meander.top{top:16px}.meander.bottom{bottom:16px}
+    }
+    @media (prefers-reduced-motion:reduce){
+      .count .flip{animation:none}
+    }
+  </style>
 </head>
 <body>
-  <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('castlesbay-theme') || 'dark');</script>
-  <div class="ambient" aria-hidden="true"><span></span><span></span><span></span></div>
-  <div class="water" aria-hidden="true"><canvas id="water-canvas"></canvas></div>
-  <div id="app">
-    <!-- Coluna da torre: céu (muda com a hora) + torre -->
-    <div class="tower-col">
-      <div class="sky" aria-hidden="true"><canvas id="sky-canvas"></canvas></div>
-      <aside class="rail">
-      <div class="wordmark">
-        <div class="wordmark-mark">CB</div>
-        <div class="wordmark-text">
-          <strong>Castles Bay</strong>
-        </div>
-      </div>
+  <div class="meander top"></div>
+  <div class="meander bottom"></div>
 
-      <nav class="nav" id="nav">
-        <span class="nav-indicator" aria-hidden="true"></span>
-        <button class="nav-item" data-view="dashboard">
-          <span class="nav-ico" aria-hidden="true">◧</span>
-          <span>Painel</span>
-        </button>
-        <button class="nav-item" data-view="calendar">
-          <span class="nav-ico" aria-hidden="true">▦</span>
-          <span>Calendário</span>
-        </button>
-        <button class="nav-item" data-view="ideas">
-          <span class="nav-ico" aria-hidden="true">✦</span>
-          <span>Ideias</span>
-        </button>
-        <button class="nav-item" data-view="tasks">
-          <span class="nav-ico" aria-hidden="true">▸</span>
-          <span>Tarefas</span>
-        </button>
-      </nav>
+  <aside class="column left"><div class="capital"></div><div class="shaft"></div><div class="base"></div></aside>
+  <aside class="column right"><div class="capital"></div><div class="shaft"></div><div class="base"></div></aside>
 
-      <button id="menu-toggle" class="menu-toggle" aria-label="Menu" aria-expanded="false">☰</button>
+  <main class="stage">
+    <svg class="wreath" viewBox="0 0 440 440" aria-hidden="true"></svg>
+    <div class="eyebrow">Contagem decrescente</div>
+    <div class="count" id="count">—</div>
+    <div class="unit" id="unit">dias</div>
+    <div class="divider"><span class="rule"></span><span class="gem"></span><span class="rule r"></span></div>
+    <div class="target">28 de Maio de 2027</div>
+    <div class="foot">Ad astra</div>
+  </main>
 
-      <div class="rail-drawer">
-      <div class="rail-section">
-        <div class="rail-section-head">
-          <span>Categorias</span>
-          <button id="add-category-btn" class="icon-btn" title="Nova categoria" aria-label="Nova categoria">＋</button>
-        </div>
-        <ul id="category-list" class="category-list"></ul>
-      </div>
+  <script>
+    // ---- Contagem de dias até 28 de Maio de 2027 ----
+    (function(){
+      var countEl = document.getElementById('count');
+      var unitEl  = document.getElementById('unit');
+      function daysLeft(){
+        var target = new Date(2027, 4, 28);            // Maio = mês 4
+        var now = new Date();
+        var t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        return Math.round((target - t0) / 86400000);
+      }
+      function render(){
+        var d = daysLeft();
+        if (d < 0){ countEl.textContent = '0'; unitEl.textContent = 'chegámos'; return; }
+        countEl.innerHTML = '<span class="flip">'+d+'</span>';
+        unitEl.textContent = (d === 1) ? 'dia' : 'dias';
+      }
+      render();
+      // recalcular à meia-noite seguinte, depois a cada 24h
+      var now = new Date();
+      var nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()+1, 0, 0, 5);
+      setTimeout(function(){ render(); setInterval(render, 86400000); }, nextMidnight - now);
+    })();
 
-      <div class="rail-foot">
-        <button id="sync-btn" class="sync-status" title="Sincronização">
-          <span class="sync-dot" aria-hidden="true"></span>
-          <span id="sync-label">Só neste dispositivo</span>
-        </button>
-        <div class="rail-tools">
-          <button id="theme-toggle" class="ghost-btn" title="Alternar tema claro/escuro">Tema claro</button>
-          <button id="export-btn" class="ghost-btn" title="Guardar cópia de segurança">Exportar</button>
-          <button id="import-btn" class="ghost-btn" title="Restaurar cópia de segurança">Importar</button>
-          <input type="file" id="import-file" accept="application/json" hidden />
-        </div>
-        <div class="rail-user">
-          <span id="rail-user-name" class="rail-user-name"></span>
-          <button id="logout-btn" class="ghost-btn" title="Terminar sessão">Sair</button>
-        </div>
-      </div>
-      </div>
-    </aside>
-    </div>
-    <div id="menu-backdrop" class="menu-backdrop" hidden></div>
-    <div id="mobile-drawer" class="mobile-drawer"></div>
+    // ---- Coroa de louros (gerada) ----
+    (function(){
+      var svg = document.querySelector('.wreath');
+      var NS = 'http://www.w3.org/2000/svg';
+      var cx = 220, cy = 218, R = 182;
+      // dois ramos simétricos, com abertura no topo (-90° = topo, 90° = baixo)
+      function branch(startDeg, endDeg){
+        var leaves = 16;
+        for (var i=1;i<=leaves;i++){
+          var t = i/leaves;
+          var deg = startDeg + (endDeg-startDeg)*t;
+          var ang = deg * Math.PI/180;
+          var px = cx + R*Math.cos(ang);
+          var py = cy + R*Math.sin(ang);
+          var tangent = deg + 90;                 // ao longo do arco
+          var tilt = (i % 2 === 0) ? 24 : -24;     // espinha (folhas em V)
+          var leaf = document.createElementNS(NS,'ellipse');
+          leaf.setAttribute('cx', px); leaf.setAttribute('cy', py);
+          leaf.setAttribute('rx', 23); leaf.setAttribute('ry', 7);
+          leaf.setAttribute('transform', 'rotate('+(tangent+tilt)+' '+px+' '+py+')');
+          leaf.setAttribute('fill', '#b28f4d');
+          leaf.setAttribute('opacity', (0.28 + 0.42*Math.sin(t*Math.PI)).toFixed(2));
+          svg.appendChild(leaf);
+        }
+      }
+      branch(-108, -270);   // ramo esquerdo: topo-esq → esq → baixo
+      branch(-72, 90);      // ramo direito: topo-dir → dir → baixo
+      // baga central em baixo, onde os ramos se encontram
+      var berry = document.createElementNS(NS,'circle');
+      berry.setAttribute('cx',cx); berry.setAttribute('cy',cy+R);
+      berry.setAttribute('r',5); berry.setAttribute('fill','#c9a86a'); berry.setAttribute('opacity','.8');
+      svg.appendChild(berry);
+    })();
 
-    <!-- Main -->
-    <main class="main">
-      <header class="topbar">
-        <div class="topbar-title">
-          <span class="eyebrow" id="view-eyebrow">Planeamento</span>
-          <h1 id="view-title">Calendário</h1>
-        </div>
-        <div class="topbar-actions">
-          <label class="search">
-            <span class="search-ico" aria-hidden="true">⌕</span>
-            <input type="search" id="search-input" placeholder="Pesquisar…" aria-label="Pesquisar" autocomplete="off" />
-          </label>
-          <label class="filter">
-            <span class="filter-label">Categoria</span>
-            <select id="category-filter" aria-label="Filtrar por categoria">
-              <option value="all">Todas</option>
-            </select>
-          </label>
-          <button id="primary-action" class="primary-btn">Novo post</button>
-        </div>
-      </header>
-
-      <section id="view-container" class="view-container"></section>
-    </main>
-  </div>
-
-  <!-- Modal -->
-  <div id="modal-backdrop" class="modal-backdrop" hidden>
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-      <div class="modal-head">
-        <h2 id="modal-title">Título</h2>
-        <button id="modal-close" class="icon-btn" aria-label="Fechar">✕</button>
-      </div>
-      <div id="modal-body" class="modal-body"></div>
-    </div>
-  </div>
-
-  <!-- Lightbox -->
-  <div id="lightbox" class="lightbox" hidden>
-    <img id="lightbox-img" alt="Imagem do post" />
-  </div>
-
-  <div id="toast" class="toast" hidden></div>
-
-  <!-- Ecrã de entrada -->
-  <div id="login" class="login-screen" hidden>
-    <form id="login-form" class="login-card" autocomplete="off">
-      <div class="login-mark">CB</div>
-      <div class="login-title">Castles Bay</div>
-      <label class="login-field"><span>Utilizador</span>
-        <input type="text" id="login-user" autocapitalize="none" autocomplete="username" placeholder="admin ou convidado" />
-      </label>
-      <label class="login-field"><span>Palavra-passe</span>
-        <input type="password" id="login-pass" autocomplete="current-password" placeholder="••••••••" />
-      </label>
-      <div id="login-error" class="login-error" hidden>Utilizador ou palavra-passe incorretos.</div>
-      <button type="submit" class="primary-btn login-btn">Entrar</button>
-    </form>
-  </div>
-
-  <!-- Firebase SDK (compat) — sincronização entre dispositivos.
-       Sem rede/config, a app funciona só neste dispositivo. -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-  <script src="config.js" onerror="void 0"></script>
-
-  <script src="app.js"></script>
+    // ---- Padrão de meandro grego (SVG data-URI) ----
+    (function(){
+      var tile =
+        '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="34" viewBox="0 0 40 34">'+
+        '<path d="M0 31 H40 M6 31 V7 H30 V25 H14 V15 H22 V21" fill="none" stroke="#b28f4d" stroke-width="3"/>'+
+        '</svg>';
+      var url = "url('data:image/svg+xml;utf8," + encodeURIComponent(tile) + "')";
+      document.querySelector('.meander.top').style.backgroundImage = url;
+      document.querySelector('.meander.bottom').style.backgroundImage = url;
+    })();
+  </script>
 </body>
 </html>
