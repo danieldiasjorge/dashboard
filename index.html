@@ -14,7 +14,6 @@
       --ink-soft:#5c6b78;
       --gold:#b28f4d;
       --gold-soft:#c9a86a;
-      --stone:#d8cdb6;
       --line:rgba(42,59,77,.16);
     }
     *{box-sizing:border-box;margin:0;padding:0}
@@ -44,9 +43,7 @@
     }
 
     /* ---- Colunas dóricas ---- */
-    .column{
-      position:fixed;top:0;bottom:0;width:120px;z-index:1;pointer-events:none;
-    }
+    .column{position:fixed;top:0;bottom:0;width:120px;z-index:1;pointer-events:none}
     .column.left{left:2.5vw}
     .column.right{right:2.5vw}
     .shaft{
@@ -57,53 +54,59 @@
           rgba(255,255,255,.15) 22%, rgba(42,59,77,.10) 38%,
           rgba(255,255,255,.35) 52%, rgba(42,59,77,.10) 66%,
           rgba(255,255,255,.15) 80%, rgba(42,59,77,.22) 100%),
-        repeating-linear-gradient(90deg,
-          rgba(42,59,77,.10) 0 2px, transparent 2px 16px),
+        repeating-linear-gradient(90deg, rgba(42,59,77,.10) 0 2px, transparent 2px 16px),
         linear-gradient(180deg,#f3ecdd,#e2d7c0);
       border-radius:4px;
     }
-    /* capitel (echino + ábaco) */
     .capital{position:absolute;top:78px;left:2px;right:2px;height:42px}
     .capital::before{content:"";position:absolute;bottom:0;left:8px;right:8px;height:20px;
       background:linear-gradient(180deg,#f2ecdd,#d9ceb6);border-radius:0 0 40% 40%/0 0 100% 100%}
     .capital::after{content:"";position:absolute;top:0;left:0;right:0;height:24px;
       background:linear-gradient(180deg,#f6f0e2,#e0d5be);box-shadow:0 3px 6px rgba(42,59,77,.10)}
-    /* base */
     .base{position:absolute;bottom:78px;left:0;right:0;height:44px}
     .base::before{content:"";position:absolute;top:0;left:8px;right:8px;height:22px;
       background:linear-gradient(180deg,#eee7d7,#d5cab2);border-radius:40% 40% 0 0/100% 100% 0 0}
     .base::after{content:"";position:absolute;bottom:0;left:-2px;right:-2px;height:24px;
       background:linear-gradient(180deg,#efe8d8,#d3c8af);box-shadow:0 4px 10px rgba(42,59,77,.12)}
 
-    /* ---- moldura de meandro (grega) em cima e em baixo ---- */
+    /* ---- moldura de meandro (grega) ---- */
     .meander{position:fixed;left:0;right:0;height:34px;z-index:3;pointer-events:none;
       background-repeat:repeat-x;background-size:auto 34px;opacity:.85}
     .meander.top{top:26px}
     .meander.bottom{bottom:26px;transform:scaleY(-1)}
 
     /* ---- conteúdo central ---- */
-    .stage{position:relative;z-index:4;text-align:center;padding:24px}
-    .wreath{position:absolute;left:50%;top:52%;transform:translate(-50%,-50%);
-      width:min(78vw,560px);opacity:.9;z-index:-1;pointer-events:none}
+    .stage{position:relative;z-index:4;text-align:center;padding:24px;max-width:min(94vw,1100px)}
 
     .eyebrow{
       font-family:"Jost",sans-serif;font-weight:500;letter-spacing:.42em;text-transform:uppercase;
-      font-size:clamp(11px,1.5vw,15px);color:var(--gold);margin-bottom:6px;padding-left:.42em;
+      font-size:clamp(11px,1.5vw,15px);color:var(--gold);margin-bottom:20px;padding-left:.42em;
     }
-    .count{
+
+    .counter-wrap{display:flex;align-items:center;justify-content:center;gap:clamp(6px,1.6vw,26px)}
+    .sprig{width:clamp(34px,5vw,64px);height:clamp(130px,20vw,210px);flex:0 0 auto}
+    .sprig.right{transform:scaleX(-1)}
+
+    .counter{display:flex;align-items:baseline;justify-content:center;gap:clamp(3px,.9vw,12px)}
+    .unit-box{display:flex;flex-direction:column;align-items:center;min-width:clamp(50px,8.5vw,112px)}
+    .num{
       font-family:"Playfair Display",serif;font-weight:700;line-height:1;
-      font-size:clamp(92px,24vw,248px);
-      color:var(--ink);
-      text-shadow:0 2px 0 rgba(255,255,255,.6),0 18px 40px rgba(42,59,77,.18);
+      font-size:clamp(40px,8vw,96px);color:var(--ink);
       font-variant-numeric:tabular-nums;
+      text-shadow:0 2px 0 rgba(255,255,255,.6),0 14px 30px rgba(42,59,77,.16);
     }
-    .count .flip{display:inline-block;animation:rise .8s cubic-bezier(.2,.8,.2,1) both}
-    .unit{
-      font-family:"Jost",sans-serif;font-weight:600;letter-spacing:.5em;text-transform:uppercase;
-      font-size:clamp(14px,2.4vw,22px);color:var(--ink-soft);margin-top:14px;padding-left:.5em;
+    .lbl{
+      font-family:"Jost",sans-serif;font-weight:600;letter-spacing:.2em;text-transform:uppercase;
+      font-size:clamp(9px,1.3vw,13px);color:var(--ink-soft);margin-top:12px;
     }
-    .divider{display:flex;align-items:center;justify-content:center;gap:14px;margin:22px 0 14px}
-    .divider .rule{height:1px;width:min(22vw,120px);background:linear-gradient(90deg,transparent,var(--gold))}
+    .colon{
+      font-family:"Playfair Display",serif;font-weight:700;line-height:1;
+      font-size:clamp(30px,5.5vw,70px);color:var(--gold);opacity:.45;
+      align-self:baseline;transform:translateY(-.06em);
+    }
+
+    .divider{display:flex;align-items:center;justify-content:center;gap:14px;margin:34px 0 14px}
+    .divider .rule{height:1px;width:min(22vw,140px);background:linear-gradient(90deg,transparent,var(--gold))}
     .divider .rule.r{background:linear-gradient(90deg,var(--gold),transparent)}
     .divider .gem{width:9px;height:9px;transform:rotate(45deg);background:var(--gold);box-shadow:0 0 0 4px rgba(178,143,77,.15)}
     .target{
@@ -115,14 +118,17 @@
       font-size:clamp(10px,1.4vw,12px);color:var(--ink-soft);opacity:.7;padding-left:.34em;
     }
 
-    @keyframes rise{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:translateY(0)}}
-
     @media (max-width:820px){
       .column{display:none}
       .meander.top{top:16px}.meander.bottom{bottom:16px}
     }
-    @media (prefers-reduced-motion:reduce){
-      .count .flip{animation:none}
+    @media (max-width:600px){
+      .sprig{display:none}
+      .colon{display:none}
+      .counter{gap:8px}
+      .unit-box{min-width:auto;flex:1 1 0}
+      .num{font-size:clamp(26px,10vw,44px)}
+      .lbl{letter-spacing:.12em;font-size:10px;margin-top:8px}
     }
   </style>
 </head>
@@ -134,71 +140,100 @@
   <aside class="column right"><div class="capital"></div><div class="shaft"></div><div class="base"></div></aside>
 
   <main class="stage">
-    <svg class="wreath" viewBox="0 0 440 440" aria-hidden="true"></svg>
     <div class="eyebrow">Contagem decrescente</div>
-    <div class="count" id="count">—</div>
-    <div class="unit" id="unit">dias</div>
+
+    <div class="counter-wrap">
+      <svg class="sprig left" viewBox="0 0 70 220" aria-hidden="true"></svg>
+      <div class="counter" id="counter">
+        <div class="unit-box"><span class="num" id="u-mo">--</span><span class="lbl">Meses</span></div>
+        <span class="colon">:</span>
+        <div class="unit-box"><span class="num" id="u-d">--</span><span class="lbl">Dias</span></div>
+        <span class="colon">:</span>
+        <div class="unit-box"><span class="num" id="u-h">--</span><span class="lbl">Horas</span></div>
+        <span class="colon">:</span>
+        <div class="unit-box"><span class="num" id="u-m">--</span><span class="lbl">Minutos</span></div>
+        <span class="colon">:</span>
+        <div class="unit-box"><span class="num" id="u-s">--</span><span class="lbl">Segundos</span></div>
+      </div>
+      <svg class="sprig right" viewBox="0 0 70 220" aria-hidden="true"></svg>
+    </div>
+
     <div class="divider"><span class="rule"></span><span class="gem"></span><span class="rule r"></span></div>
     <div class="target">28 de Maio de 2027</div>
     <div class="foot">Ad astra</div>
   </main>
 
   <script>
-    // ---- Contagem de dias até 28 de Maio de 2027 ----
+    // ---- Contagem até 28 de Maio de 2027 (meses, dias, horas, min, seg) ----
     (function(){
-      var countEl = document.getElementById('count');
-      var unitEl  = document.getElementById('unit');
-      function daysLeft(){
-        var target = new Date(2027, 4, 28);            // Maio = mês 4
+      var TARGET = new Date(2027, 4, 28, 0, 0, 0);   // Maio = mês 4
+      var el = {
+        mo: document.getElementById('u-mo'),
+        d:  document.getElementById('u-d'),
+        h:  document.getElementById('u-h'),
+        m:  document.getElementById('u-m'),
+        s:  document.getElementById('u-s')
+      };
+      function pad(n){ return (n < 10 ? '0' : '') + n; }
+      function breakdown(){
         var now = new Date();
-        var t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        return Math.round((target - t0) / 86400000);
+        if (now >= TARGET) return {mo:0,d:0,h:0,m:0,s:0};
+        // meses inteiros
+        var mo = (TARGET.getFullYear()-now.getFullYear())*12 + (TARGET.getMonth()-now.getMonth());
+        var anchor = new Date(now); anchor.setMonth(anchor.getMonth()+mo);
+        if (anchor > TARGET){ mo--; anchor = new Date(now); anchor.setMonth(anchor.getMonth()+mo); }
+        var diff = TARGET - anchor;
+        var d = Math.floor(diff/86400000); diff -= d*86400000;
+        var h = Math.floor(diff/3600000);  diff -= h*3600000;
+        var m = Math.floor(diff/60000);    diff -= m*60000;
+        var s = Math.floor(diff/1000);
+        return {mo:mo, d:d, h:h, m:m, s:s};
       }
       function render(){
-        var d = daysLeft();
-        if (d < 0){ countEl.textContent = '0'; unitEl.textContent = 'chegámos'; return; }
-        countEl.innerHTML = '<span class="flip">'+d+'</span>';
-        unitEl.textContent = (d === 1) ? 'dia' : 'dias';
+        var b = breakdown();
+        el.mo.textContent = b.mo;
+        el.d.textContent  = pad(b.d);
+        el.h.textContent  = pad(b.h);
+        el.m.textContent  = pad(b.m);
+        el.s.textContent  = pad(b.s);
       }
       render();
-      // recalcular à meia-noite seguinte, depois a cada 24h
-      var now = new Date();
-      var nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()+1, 0, 0, 5);
-      setTimeout(function(){ render(); setInterval(render, 86400000); }, nextMidnight - now);
+      // atualiza no início de cada segundo
+      function tick(){ render(); setTimeout(tick, 1000 - (Date.now() % 1000)); }
+      setTimeout(tick, 1000 - (Date.now() % 1000));
     })();
 
-    // ---- Coroa de louros (gerada) ----
+    // ---- Ramos de louros a ladear o contador ----
     (function(){
-      var svg = document.querySelector('.wreath');
       var NS = 'http://www.w3.org/2000/svg';
-      var cx = 220, cy = 218, R = 182;
-      // dois ramos simétricos, com abertura no topo (-90° = topo, 90° = baixo)
-      function branch(startDeg, endDeg){
-        var leaves = 16;
-        for (var i=1;i<=leaves;i++){
-          var t = i/leaves;
-          var deg = startDeg + (endDeg-startDeg)*t;
-          var ang = deg * Math.PI/180;
-          var px = cx + R*Math.cos(ang);
-          var py = cy + R*Math.sin(ang);
-          var tangent = deg + 90;                 // ao longo do arco
-          var tilt = (i % 2 === 0) ? 24 : -24;     // espinha (folhas em V)
-          var leaf = document.createElementNS(NS,'ellipse');
-          leaf.setAttribute('cx', px); leaf.setAttribute('cy', py);
-          leaf.setAttribute('rx', 23); leaf.setAttribute('ry', 7);
-          leaf.setAttribute('transform', 'rotate('+(tangent+tilt)+' '+px+' '+py+')');
-          leaf.setAttribute('fill', '#b28f4d');
-          leaf.setAttribute('opacity', (0.28 + 0.42*Math.sin(t*Math.PI)).toFixed(2));
-          svg.appendChild(leaf);
-        }
+      function leaf(svg, x, y, deg, op){
+        var e = document.createElementNS(NS,'ellipse');
+        e.setAttribute('cx', x); e.setAttribute('cy', y);
+        e.setAttribute('rx', 15); e.setAttribute('ry', 5);
+        e.setAttribute('transform', 'rotate('+deg+' '+x+' '+y+')');
+        e.setAttribute('fill', '#b28f4d'); e.setAttribute('opacity', op);
+        svg.appendChild(e);
       }
-      branch(-108, -270);   // ramo esquerdo: topo-esq → esq → baixo
-      branch(-72, 90);      // ramo direito: topo-dir → dir → baixo
-      // baga central em baixo, onde os ramos se encontram
-      var berry = document.createElementNS(NS,'circle');
-      berry.setAttribute('cx',cx); berry.setAttribute('cy',cy+R);
-      berry.setAttribute('r',5); berry.setAttribute('fill','#c9a86a'); berry.setAttribute('opacity','.8');
-      svg.appendChild(berry);
+      function build(svg){
+        var stem = document.createElementNS(NS,'path');
+        stem.setAttribute('d','M40 214 Q26 118 40 10');
+        stem.setAttribute('fill','none'); stem.setAttribute('stroke','#b28f4d');
+        stem.setAttribute('stroke-width','2'); stem.setAttribute('opacity','.5');
+        svg.appendChild(stem);
+        var N = 6;
+        for (var i=1;i<=N;i++){
+          var t = i/(N+1);
+          var y = 214 - t*196;
+          var x = 40 + Math.sin(t*Math.PI)*-12;
+          var op = (0.4 + 0.4*Math.sin(t*Math.PI)).toFixed(2);
+          leaf(svg, x-3, y, -122, op);   // folha para cima-esquerda
+          leaf(svg, x+3, y, -58,  op);   // folha para cima-direita
+        }
+        // folha do topo
+        leaf(svg, 40, 12, -90, 0.7);
+      }
+      build(document.querySelector('.sprig.left'));
+      build(document.querySelector('.sprig.right'));
     })();
 
     // ---- Padrão de meandro grego (SVG data-URI) ----
