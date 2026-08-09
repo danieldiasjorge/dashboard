@@ -118,6 +118,25 @@
       font-size:clamp(10px,1.4vw,12px);color:var(--ink-soft);opacity:.7;padding-left:.34em;
     }
 
+    /* ---- assinaturas ---- */
+    .signatures{
+      display:flex;justify-content:center;flex-wrap:wrap;
+      gap:clamp(28px,7vw,90px);margin-top:clamp(38px,6vw,64px);
+    }
+    .sig{display:flex;flex-direction:column;align-items:center;gap:9px}
+    .sig-name{
+      font-family:"Playfair Display",serif;font-style:italic;font-weight:700;
+      font-size:clamp(22px,3.2vw,34px);color:var(--ink);line-height:1;
+    }
+    .sig-line{
+      width:clamp(78px,10vw,130px);height:0;
+      border-top:1.6px solid var(--gold);opacity:.75;
+      border-radius:2px;transform:rotate(-.6deg);
+    }
+    .sig:nth-child(1) .sig-name{transform:rotate(-4deg)}
+    .sig:nth-child(2) .sig-name{transform:rotate(2deg)}
+    .sig:nth-child(3) .sig-name{transform:rotate(-3deg)}
+
     @media (max-width:820px){
       .column{display:none}
       .meander.top{top:16px}.meander.bottom{bottom:16px}
@@ -161,6 +180,12 @@
     <div class="divider"><span class="rule"></span><span class="gem"></span><span class="rule r"></span></div>
     <div class="target">28 de Maio de 2027</div>
     <div class="foot">Ad astra</div>
+
+    <div class="signatures">
+      <div class="sig"><span class="sig-name">Aquiles</span><span class="sig-line"></span></div>
+      <div class="sig"><span class="sig-name">Ajax</span><span class="sig-line"></span></div>
+      <div class="sig"><span class="sig-name">Ulisses</span><span class="sig-line"></span></div>
+    </div>
   </main>
 
   <script>
